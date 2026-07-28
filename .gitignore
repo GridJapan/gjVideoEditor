@@ -1,0 +1,48 @@
+# メディア素材・生成物はgit管理外（project.jsonだけ資産として残す）
+*.mp4
+*.mov
+*.wav
+*.aiff
+*.aif
+*.m4a
+*.mp3
+*.aac
+*.ogg
+*.flac
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+png/
+out/
+_fc.txt
+_waveform.png
+_wave_*.png
+project.json.bak-*
+__pycache__/
+node_modules/
+.DS_Store
+.history/
+*.tmp
+
+# 紹介ページ（GitHub Pages）の素材は追跡する。
+# ⚠️ 中身は必ず目で見てから入れること — 漏洩スキャンはテキストしか読まないので、
+#    画像・動画に写り込んだものは検出できない（public/README.md 参照）
+!docs/assets/
+!docs/assets/*.png
+!docs/assets/*.jpg
+!docs/assets/*.mp4
+
+# 配布用サンプルだけは素材ごと追跡する（clone直後に「動くもの」を1つ持たせるため。約90KB）。
+# 素材は tools/make_sample.py が生成したもの。出所不明のファイルをここに置かないこと。
+# ⚠️ ここに他のプロジェクトを足さないこと（動画・BGMを含むと一気に肥大化する。配布は zip書き出しで行う）
+!projects/sample-hello/
+!projects/sample-hello/*.png
+!projects/sample-hello/*.mp3
+# ⚠️ 上の ! で *.png の除外が解除されるため、生成物は**この後で**明示的に外し直す
+#    （_wave_*.png = UIが作る波形キャッシュ。順序を入れ替えると再び追跡されてしまう）
+projects/sample-hello/out/
+projects/sample-hello/png/
+projects/sample-hello/_wave_*.png
+projects/sample-hello/_waveform.png

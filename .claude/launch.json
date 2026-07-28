@@ -1,0 +1,13 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "video-editor",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["ui/server.py"],
+      "port": 8765,
+      "url": "http://localhost:8765/",
+      "autoVerify": true
+    }
+  ]
+}

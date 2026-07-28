@@ -1,0 +1,58 @@
+video-editor
+Copyright (c) 2026 GridJapan
+
+このリポジトリは MIT License で配布しています（LICENSE を参照）。
+
+
+■ 同梱している素材について
+
+`projects/sample-hello/` の画像と効果音は、**すべてこのリポジトリ内のスクリプトが
+生成したもの**です。第三者の著作物は含まれていません。
+
+    生成元: tools/make_sample.py
+    再生成: python3 tools/make_sample.py
+
+    logo.png / s1.png / s2.png / s3.png   Pillow で描いた図形
+    impact.mp3 / transition.mp3           ffmpeg の合成音（正弦波＋ノイズ）
+
+これらもソフトウェア本体と同じく MIT License の対象です。
+
+
+■ 紹介ページのデモ動画について
+
+`docs/assets/sample.mp4` は GitHub Pages の紹介ページ用に制作した動画で、
+ソフトウェアの一部ではありません。以下を含みます。
+
+    図解        AIによる生成物
+    ナレーション edge-tts による音声合成
+    BGM         DOVA-SYNDROME（https://dova-s.jp/）
+                商用利用無料・著作権表示不要
+    効果音      効果音ラボ（https://soundeffect-lab.info/）
+                商用利用無料・クレジット表記不要
+    ロゴ        GridJapan
+
+BGM・効果音とも、**音源ファイル自体はこのリポジトリに含まれていません。**
+動画に組み込まれた状態でのみ配布しています（各配布元の規約に沿った利用です）。
+
+
+■ 依存しているソフトウェア（同梱していません）
+
+本体は Python 標準ライブラリだけで動きます。以下は利用者が各自で導入するもので、
+このリポジトリには含まれません。
+
+    Pillow    HPND License          https://python-pillow.org/
+    ffmpeg    LGPL-2.1+ / GPL-2.0+  https://ffmpeg.org/
+              （ビルド構成によって異なります）
+    edge-tts  GPL-3.0（任意）        https://github.com/rany2/edge-tts
+              ナレーション生成に使う場合のみ
+
+ffmpeg と edge-tts は外部プロセスとして呼び出すだけで、本体にリンクしていません。
+
+
+■ 自分の素材を足すとき
+
+音源・画像・フォントを追加する場合は、**出所とライセンスを必ず記録してください。**
+出所の分からない素材をリポジトリに入れると、その時点で再配布できなくなります。
+
+配布サイトの多くは自動収集（スクレイピング）を規約で禁止しています。
+素材はブラウザで人が選んで個別に入手してください。

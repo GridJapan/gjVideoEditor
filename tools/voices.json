@@ -1,0 +1,123 @@
+{
+ "_doc": "ナレーション用ボイスのカタログ。engine=edge(無料/キー不要・Microsoft neural) / eleven(ElevenLabs・要ELEVENLABS_API_KEY) / say(macOS内蔵・低品質フォールバック)。fx=robot でピッチ下げ＋フランジャーのAI/ロボット加工。rate/pitchはedgeのみ有効。",
+ "presets": {
+  "narrator-m": {
+   "engine": "edge",
+   "ref": "ja-JP-KeitaNeural",
+   "label": "男性ナレーター (Keita)",
+   "rate": "+6%"
+  },
+  "narrator-f": {
+   "engine": "edge",
+   "ref": "ja-JP-NanamiNeural",
+   "label": "女性ナレーター (Nanami)",
+   "rate": "+6%"
+  },
+  "narrator-m-lo": {
+   "engine": "edge",
+   "ref": "ja-JP-KeitaNeural",
+   "label": "男性・低め (落ち着き)",
+   "rate": "+2%",
+   "pitch": "-10Hz"
+  },
+  "hype-f": {
+   "engine": "edge",
+   "ref": "ja-JP-NanamiNeural",
+   "label": "女性・テンション高め",
+   "rate": "+14%",
+   "pitch": "+12Hz"
+  },
+  "ai-robot": {
+   "engine": "edge",
+   "ref": "ja-JP-NanamiNeural",
+   "label": "AI / ロボット声",
+   "rate": "+4%",
+   "fx": "robot"
+  },
+  "ai-robot-m": {
+   "engine": "edge",
+   "ref": "ja-JP-KeitaNeural",
+   "label": "AI / ロボット声 (男)",
+   "rate": "+4%",
+   "fx": "robot"
+  },
+  "mio-yuki": {
+   "engine": "eleven",
+   "ref": "E82LCKbxOYCskaukjg3R",
+   "label": "Mio Yuki (EL/ja narrative)",
+   "model": "eleven_v3"
+  },
+  "hisako": {
+   "engine": "eleven",
+   "ref": "NPsEimWDV4qOI0lhLCtW",
+   "label": "メンテナ役 (Tao_taro・落ち着き)",
+   "model": "eleven_v3"
+  },
+  "hisako-genki": {
+   "engine": "eleven",
+   "ref": "NPsEimWDV4qOI0lhLCtW",
+   "label": "メンテナ役 (Tao_taro・元気/勢い 強)",
+   "model": "eleven_v3",
+   "settings": {
+    "stability": 0.2,
+    "similarity_boost": 0.9,
+    "style": 0.75,
+    "use_speaker_boost": true,
+    "speed": 1.14
+   }
+  },
+  "ai": {
+   "engine": "eleven",
+   "ref": "l7ME2dcqpdvq6E8sCS24",
+   "label": "課長AI (Sara+ロボ加工)",
+   "model": "eleven_v3",
+   "fx": "robot"
+  },
+  "kyoko": {
+   "engine": "say",
+   "ref": "Kyoko",
+   "label": "Kyoko (macOS・低品質)",
+   "rate": "185"
+  },
+  "iroha": {
+   "engine": "eleven",
+   "ref": "uYwU1hsbnP5viqq9qhob",
+   "label": "Irohauta_taro (ja/かわいい)",
+   "model": "eleven_v3"
+  },
+  "kano": {
+   "engine": "eleven",
+   "ref": "OSwaPSNdfituxkWcjlkR",
+   "label": "Kano_guri (ja/女性・かわいい)",
+   "model": "eleven_v3"
+  },
+  "yui": {
+   "engine": "eleven",
+   "ref": "fUjY9K2nAIwlALOwSiwc",
+   "label": "Yui (ja/女性・やわらかい)",
+   "model": "eleven_v3"
+  },
+  "tao-narrator": {
+   "engine": "eleven",
+   "ref": "NPsEimWDV4qOI0lhLCtW",
+   "label": "Tao_taro ナレーション（落ち着き）",
+   "model": "eleven_v3",
+   "settings": {
+    "stability": 0.55,
+    "style": 0.15,
+    "similarity_boost": 0.8
+   }
+  },
+  "kano-narrator": {
+   "engine": "eleven",
+   "ref": "OSwaPSNdfituxkWcjlkR",
+   "label": "Kano_guri ナレーション（落ち着き）",
+   "model": "eleven_v3",
+   "settings": {
+    "stability": 0.55,
+    "style": 0.15,
+    "similarity_boost": 0.8
+   }
+  }
+ }
+}

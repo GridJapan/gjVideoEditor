@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>video-editor — 自然言語で作り、UIで仕上げる動画づくり</title>
+<meta name="description" content="AIに日本語で頼んで作り、タイムラインUIで仕上げる。Python標準ライブラリ＋Pillow＋ffmpegだけで動く、依存ゼロの動画編集ツール。MITライセンス。">
+<meta property="og:title" content="video-editor">
+<meta property="og:description" content="自然言語で作り、UIで仕上げる動画づくり。依存ゼロ・MITライセンス。">
+<meta property="og:image" content="../assets/editor.png">
+<meta property="og:type" content="website">
+<link rel="alternate" hreflang="ja" href="https://gridjapan.github.io/gjVideoEditor/jp/">
+<link rel="alternate" hreflang="en" href="https://gridjapan.github.io/gjVideoEditor/en/">
+<style>
+  :root{
+    --ink:#0f172a; --body:#475569; --muted:#94a3b8;
+    --line:#e2e8f0; --bg:#ffffff; --soft:#f8fafc;
+    --accent:#2563eb; --warm:#e2984c;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
+    color:var(--body);background:var(--bg);line-height:1.9;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px}
+
+  /* ヘッダ */
+  header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.88);
+    backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}
+  .hbar{display:flex;align-items:center;gap:20px;height:60px}
+  .logo{font-weight:700;color:var(--ink);font-size:15px;letter-spacing:.02em}
+  .hbar nav{margin-left:auto;display:flex;gap:18px;align-items:center;font-size:13px}
+  .hbar nav a{color:var(--body)}
+  .lang{color:var(--muted);font-size:12px}
+  .lang a{color:var(--muted)}
+  .lang .on{color:var(--ink);font-weight:600}
+  .ghbtn{background:var(--ink);color:#fff;padding:7px 14px;border-radius:7px;font-weight:600}
+  .ghbtn:hover{text-decoration:none;opacity:.86}
+
+  /* ヒーロー */
+  .hero{padding:76px 0 8px;text-align:center}
+  .hero h1{font-size:40px;line-height:1.45;color:var(--ink);margin:0 0 18px;letter-spacing:-.01em}
+  .hero h1 em{font-style:normal;color:var(--accent)}
+  .lede{font-size:17px;max-width:640px;margin:0 auto 12px}
+  .sub{font-size:14px;color:var(--muted);margin-bottom:30px}
+  .shot{width:100%;border-radius:12px;border:1px solid var(--line);
+    box-shadow:0 18px 48px rgba(15,23,42,.10);display:block}
+  .cap{font-size:12px;color:var(--muted);text-align:center;margin-top:10px}
+
+  /* セクション */
+  section{padding:64px 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:0}
+  .num{font:600 12px/1 var(--mono);color:var(--warm);letter-spacing:.14em;margin-bottom:12px}
+  h2{font-size:25px;color:var(--ink);margin:0 0 14px;line-height:1.6;letter-spacing:-.01em}
+  h3{font-size:16px;color:var(--ink);margin:26px 0 8px}
+  p{margin:0 0 14px}
+  .note{font-size:13px;color:var(--muted)}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:24px}
+  .card{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+  .card h3{margin-top:0}
+  .card p{font-size:14px;margin-bottom:0}
+
+  pre{background:#0f172a;color:#e2e8f0;padding:16px 18px;border-radius:9px;overflow-x:auto;
+    font:13px/1.75 var(--mono);margin:16px 0}
+  pre .c{color:#7c8aa0}
+  code{font:.92em var(--mono);background:var(--soft);border:1px solid var(--line);
+    padding:1px 6px;border-radius:5px;color:var(--ink)}
+  pre code{background:none;border:0;padding:0;color:inherit}
+
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--ink);font-weight:600;white-space:nowrap}
+
+  video{width:100%;border-radius:10px;border:1px solid var(--line);display:block;background:#000}
+
+  footer{border-top:1px solid var(--line);padding:34px 0 60px;font-size:13px;color:var(--muted)}
+  footer a{color:var(--body)}
+
+
+  /* AIへの依頼文ブロック */
+  .ask{border:2px solid var(--accent);border-radius:11px;overflow:hidden;margin:20px 0}
+  .ask-head{display:flex;align-items:center;gap:12px;padding:12px 16px;
+    background:#eff4fe;border-bottom:1px solid #cfdcf8;font-size:13px;font-weight:600;color:var(--ink)}
+  .copybtn{margin-left:auto;background:var(--accent);color:#fff;border:0;cursor:pointer;
+    padding:8px 16px;border-radius:7px;font:600 13px/1 inherit;white-space:nowrap}
+  .copybtn:hover{opacity:.88}
+  .copybtn.done{background:#16a34a}
+  .ask pre{margin:0;border-radius:0;white-space:pre-wrap;word-break:break-word;
+    max-height:none;font-size:12.5px}
+
+
+  .badge{display:inline-block;font-size:12px;font-weight:600;color:var(--warm);
+    border:1px solid #f0d9b8;background:#fdf7ee;border-radius:999px;
+    padding:4px 14px;margin:0 0 20px;letter-spacing:.03em}
+  .credit{margin-top:6px;font-size:12px;color:var(--muted)}
+
+  @media(max-width:720px){
+    .hero{padding:48px 0 4px}
+    .hero h1{font-size:28px}
+    .cols{grid-template-columns:1fr;gap:16px}
+    .hbar nav a:not(.ghbtn):not(.lang-a){display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hbar">
+    <span class="logo">🎬 GJ VIDEO EDITOR</span>
+    <nav>
+      <a href="#how">仕組み</a>
+      <a href="#features">できること</a>
+      <a href="#viewer">ビューア</a>
+      <a href="#install">導入</a>
+      <span class="lang"><span class="on">日本語</span> / <a href="../en/" class="lang-a">EN</a></span>
+      <a class="ghbtn" href="https://github.com/GridJapan/gjVideoEditor">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <p class="badge">開発中 · v0.10.0</p>
+    <h1>AIで作った動画を、<em>そのままUIで編集できる。</em></h1>
+    <p class="lede">
+      「この動画を作って」と頼んで出てきたものを、タイムラインで直接いじれます。
+      直したあとにまた言葉で指示しても、UIでの手直しは消えません。
+    </p>
+    <p class="sub">Python標準ライブラリ ＋ Pillow ＋ ffmpeg だけ。クラウドもAPIキーも不要です。</p>
+    <img class="shot" src="../assets/editor.png" alt="video-editor の編集画面。上にプレビュー、下にマルチトラックのタイムライン">
+    <p class="cap">編集画面。clone した直後にこのサンプルが動きます</p>
+  </div>
+
+  <section id="how">
+    <div class="num">01 / 仕組み</div>
+    <h2>AIとUIが、同じ1つのファイルを書き換える</h2>
+    <p>
+      AIに動画を作らせると、たいてい出てくるのはコード（React や HTML）です。
+      中身を1か所直したいだけでも、コードを読むかAIに頼み直すことになります。
+    </p>
+    <p>
+      このツールでは、AIも人も <code>project.json</code> という1枚のファイルだけを書き換えます。
+      だから<strong>AIが作ったものをそのままタイムラインで編集でき、そのあとまた言葉で指示しても、
+      手で直した内容は残ります。</strong>
+    </p>
+
+    <div class="cols">
+      <div class="card">
+        <h3>AIが書く（8割）</h3>
+        <p>差分パッチとして当たります。重なり・素材の欠落・尺の超過は<strong>保存する前に弾かれる</strong>ので、壊れたものができません。</p>
+      </div>
+      <div class="card">
+        <h3>人が直す（2割）</h3>
+        <p>ブラウザのタイムラインで直接動かします。他所からの更新とぶつかれば検知して止まります。</p>
+      </div>
+    </div>
+
+    <p class="note" style="margin-top:18px">
+      さらに、人が直した内容をAIが読み返せます。同じ直しが繰り返されているなら、それはAIの既定値が間違っているということです。
+    </p>
+  </section>
+
+  <section id="features">
+    <div class="num">02 / できること</div>
+    <h2>ふつうの編集はひととおり</h2>
+
+    <table>
+      <tr><th>タイムライン編集</th><td>映像・字幕・画像・音声のマルチトラック。ドラッグ&ドロップ、分割、undo/redo、吸着、ズーム</td></tr>
+      <tr><th>非破壊編集</th><td>長い元動画を1本置いたまま、参照位置だけをずらして使います。切り出しファイルを作らないので、<strong>端をいつでも伸ばせます</strong></td></tr>
+      <tr><th>字幕</th><td>枠のドラッグ・リサイズ・フォント・360°回転・<strong>縦書き</strong>・部分強調・画面端への吸着</td></tr>
+      <tr><th>ワイプ（PiP）</th><td>プレビュー上でドラッグして移動・拡大縮小。角丸を1.0にすると正円になります</td></tr>
+      <tr><th>書き出し</th><td>MP4 / WebM / GIF / MP3。画質と解像度を選べます</td></tr>
+      <tr><th>ナレーション</th><td>無料でAPIキー不要の音声合成に対応。複数の声を使い分けられます</td></tr>
+      <tr><th>量産</th><td>台本を1枚書いて1コマンドで動画が1本。Pythonは書きません</td></tr>
+    </table>
+
+    <h3 style="margin-top:34px">このツールで作った動画</h3>
+    <p class="note">下の28秒の動画も、このツールで組み立てて書き出したものです。</p>
+    <video controls preload="none" poster="../assets/sample-poster.jpg">
+      <source src="../assets/sample.mp4" type="video/mp4">
+    </video>
+    <p class="cap">図解はAIで生成、ナレーションは無料の音声合成。組み立て・BGM・効果音・書き出しはこのツール</p>
+  </section>
+
+  <section id="viewer">
+    <div class="num">03 / ビューア</div>
+    <h2>作った動画は、その場で見返せる</h2>
+    <p>
+      ロゴをクリックすると <strong>GJ VIDEO VIEWER</strong> が開きます。
+      書き出した動画が新しい順に並ぶので、<strong>ファイルを探しに行かずに再生して確認できます。</strong>
+    </p>
+    <img class="shot" src="../assets/viewer.png" alt="GJ VIDEO VIEWER。左に書き出した動画の一覧、右に再生画面">
+    <p class="cap">左が書き出し済みの一覧、右がプレイヤー。ループ再生にも対応しています</p>
+    <table>
+      <tr><th>一覧</th><td>プロジェクトを横断して、書き出した動画を新しい順に表示します。任意のフォルダも開けます</td></tr>
+      <tr><th>再生</th><td>サムネイルは自動で作られ、2回目以降は即座に開きます。🔁 でループ再生もできます</td></tr>
+      <tr><th>戻る</th><td>エディタに重ねて開くだけなので、閉じれば<strong>再生位置も選択もそのまま</strong>です</td></tr>
+    </table>
+  </section>
+
+  <section id="claude">
+    <div class="num">04 / おすすめの使い方</div>
+    <h2>左に相棒、右に道具</h2>
+    <p>
+      Claude デスクトップアプリから Claude Code を起動し、
+      <strong>左でチャット・右のプレビューペインでこのエディタを開く</strong>構成が一番はかどります。
+    </p>
+    <img class="shot" src="../assets/split-view.png" alt="左にClaude Codeのチャット、右にvideo-editorの編集画面を並べた画面イメージ">
+    <p class="cap">1つの画面の中で「頼む → 触る → 見る」が完結します</p>
+
+    <table>
+      <tr><th>左</th><td>「BGMもう少し小さく」「ロゴを右上に」と日本語で指示すると、差分が当たります</td></tr>
+      <tr><th>右</th><td>そのまま編集UIとして操作できます。書き出した動画の確認もここでできます</td></tr>
+    </table>
+    <p class="note">
+      リポジトリには作法を書いた <code>CLAUDE.md</code> が入っているので、
+      Claude Code はこのツールの流儀を最初から知った状態で作業します。
+      もちろん、Claude を使わずに単体でも普通に動きます。
+    </p>
+  </section>
+
+  <section id="install">
+    <div class="num">05 / 導入</div>
+    <h2>AIに頼むのが、いちばん簡単</h2>
+    <p>
+      下の依頼文をコピーして、普段使っているAIエージェント（Claude Code / Codex / Cursor など）に送ってください。
+      <strong>できるところはAIが進め、あなたの操作が必要なところだけ案内します。</strong>
+      git やターミナルが分からなくても大丈夫です。
+    </p>
+
+    <div class="ask">
+      <div class="ask-head">
+        <span>この依頼文をコピーして、AIに送る</span>
+        <button id="copyBtn" class="copybtn" type="button">依頼文をコピー</button>
+      </div>
+      <pre id="askText"><code>video-editor をこのパソコンにセットアップして、起動するところまでお願いします。
+
+リポジトリ: https://github.com/GridJapan/gjVideoEditor
+
+手順:
+1. 適当な作業フォルダに git clone する
+2. 必要なものが入っているか確認する（python3 tools/_deps.py を実行すると一覧が出ます）
+   足りないものがあれば入れ方も表示されるので、それに従って導入してください
+   - Python 3 / ffmpeg が必要です（Pillow は初回起動時に自動で入ります）
+3. python3 tools/make_sample.py を実行してサンプル素材を作る
+4. python3 ui/server.py でサーバを起動し、http://localhost:8765/ をブラウザで開く
+
+うまくいったら、サンプルの動画を書き出すところまで試して結果を教えてください。
+  python3 renderer/render.py projects/sample-hello
+
+インストールの許可など、私の操作が必要な場面があれば教えてください。</code></pre>
+    </div>
+    <p class="note">
+      パスワードの入力やインストールの許可など、<strong>あなた自身がやる必要がある場面ではAIが止まって案内します。</strong>
+    </p>
+
+    <h3 style="margin-top:38px">自分でやる場合は3ステップ</h3>
+
+<pre><code><span class="c"># 1. 取得</span>
+git clone https://github.com/GridJapan/gjVideoEditor.git
+cd video-editor
+
+<span class="c"># 2. サンプルの素材を作る（初回だけ）</span>
+python3 tools/make_sample.py
+
+<span class="c"># 3. 起動 — Mac は start.command、Windows は launch.bat をダブルクリック</span></code></pre>
+
+    <p>ブラウザが開いて、サンプルが読み込まれた状態で始まります。</p>
+
+    <h3>必要なもの</h3>
+    <table>
+      <tr><th></th><th>Mac</th><th>Windows</th></tr>
+      <tr><th>Python 3</th><td>最初から入っています</td><td>Microsoft Store から</td></tr>
+      <tr><th>ffmpeg</th><td><code>brew install ffmpeg</code></td><td><code>winget install Gyan.FFmpeg</code></td></tr>
+      <tr><th>Pillow</th><td colspan="2">初回起動時に自動で入ります</td></tr>
+    </table>
+    <p class="note">
+      足りないものがあれば、起動時に<strong>入れ方つきで教えてくれます</strong>。
+      いま何が入っているかは <code>python3 tools/_deps.py</code> で確認できます。
+    </p>
+  </section>
+
+  <section id="license">
+    <div class="num">06 / ライセンス</div>
+    <h2>MIT。商用利用も改変も自由です</h2>
+    <p>
+      同梱しているサンプルの画像・効果音は、すべてリポジトリ内のスクリプトが生成したものです。
+      第三者の著作物は含まれていないので、<strong>そのまま再配布できます</strong>。
+    </p>
+    <p class="note">
+      素材を自分で足すときは、出所とライセンスを必ず記録してください。
+      詳しくは <a href="https://github.com/GridJapan/gjVideoEditor/blob/main/NOTICE">NOTICE</a> を参照してください。
+    </p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>
+      <a href="https://github.com/GridJapan/gjVideoEditor">GitHub</a> ・
+      <a href="https://github.com/GridJapan/gjVideoEditor/issues">不具合・要望</a> ・
+      <a href="../en/">English</a>
+    </p>
+    <p>MIT License · Copyright © 2026 GridJapan</p>
+    <p class="credit">作: 和泉良祐（GridJapan）</p>
+  </div>
+</footer>
+
+
+<script>
+(function () {
+  var btn = document.getElementById('copyBtn');
+  var src = document.getElementById('askText');
+  if (!btn || !src) return;
+  btn.addEventListener('click', function () {
+    var text = src.innerText;
+    var done = function () {
+      var old = btn.textContent;
+      btn.textContent = btn.dataset.done || 'コピーしました';
+      btn.classList.add('done');
+      setTimeout(function () { btn.textContent = old; btn.classList.remove('done'); }, 1800);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+    function fallback() {                       // http や古い環境でも動くように
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

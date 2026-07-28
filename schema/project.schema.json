@@ -1,0 +1,470 @@
+{
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "title": "video-editor project",
+ "description": "project.json の構造（Single Source of Truth）。2026-07-17 に実装と全数突き合わせて再生成。規約は CLAUDE.md を参照",
+ "type": "object",
+ "required": [
+  "meta",
+  "canvas",
+  "tracks"
+ ],
+ "properties": {
+  "meta": {
+   "type": "object",
+   "properties": {
+    "title": {
+     "type": "string",
+     "description": "書き出しファイル名になる。フォルダ名と合わせる（省略時はフォルダ名）"
+    },
+    "fps": {
+     "type": "number",
+     "default": 30
+    }
+   }
+  },
+  "canvas": {
+   "type": "object",
+   "required": [
+    "w",
+    "h"
+   ],
+   "properties": {
+    "w": {
+     "type": "integer"
+    },
+    "h": {
+     "type": "integer"
+    },
+    "bg": {
+     "type": "string",
+     "description": "背景色（クリップが無い領域）",
+     "default": "black"
+    }
+   }
+  },
+  "_zorder": {
+   "type": [
+    "boolean",
+    "integer"
+   ],
+   "description": "重ね順が新方式（配列の先頭ほど前面）であることの印。**必須**。無いと読み込み時に種別順へ並べ替えられて重ね順が壊れる。UIは 1 を、ビルダーは true を書く"
+  },
+  "style": {
+   "type": "object",
+   "description": "字幕の既定スタイル（クリップ側の指定が優先）。**任意** — 無い場合レンダラは DEFAULT_STYLE で描く",
+   "properties": {
+    "font": {
+     "type": "string",
+     "default": "Hiragino Kaku Gothic Pro"
+    },
+    "fontsize": {
+     "type": "integer",
+     "default": 56
+    },
+    "marginBottom": {
+     "type": "integer",
+     "description": "x/y/w/h/valign をすべて省略した旧形式字幕の下端マージン",
+     "default": 44
+    },
+    "box": {
+     "type": "object",
+     "description": "座布団の既定（クリップの highlightColor が優先）",
+     "properties": {
+      "color": {
+       "type": "array",
+       "items": {
+        "type": "integer"
+       },
+       "description": "RGBA"
+      },
+      "radius": {
+       "type": "integer",
+       "default": 18
+      },
+      "pad": {
+       "type": "integer",
+       "default": 20
+      }
+     }
+    },
+    "outline": {
+     "type": "object",
+     "description": "旧形式の縁取り設定（現行はクリップ側 outline/outlineColor/outlineWidth を使う）"
+    },
+    "speakers": {
+     "type": "object",
+     "description": "旧形式互換（新形式では字幕clipのtext/textColorへ焼き込み済み）",
+     "additionalProperties": {
+      "type": "object",
+      "properties": {
+       "label": {
+        "type": "string"
+       },
+       "color": {
+        "type": "array",
+        "items": {
+         "type": "integer"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "audio": {
+   "type": "object",
+   "description": "音声全体の設定",
+   "properties": {
+    "loudnorm": {
+     "type": "object",
+     "description": "ラウドネス正規化。**既定ON**（YouTube想定 -14 LUFS）。シングルパスなので実測±1.5LU程度の誤差あり",
+     "properties": {
+      "on": {
+       "type": "boolean",
+       "default": true
+      },
+      "i": {
+       "type": "number",
+       "description": "目標ラウドネス LUFS",
+       "default": -14
+      },
+      "tp": {
+       "type": "number",
+       "description": "トゥルーピーク上限 dBTP",
+       "default": -1.5
+      },
+      "lra": {
+       "type": "number",
+       "description": "ラウドネスレンジ",
+       "default": 11
+      }
+     }
+    },
+    "limiter": {
+     "type": "object",
+     "description": "リミッター（loudnormの後段）。既定OFF",
+     "properties": {
+      "on": {
+       "type": "boolean",
+       "default": false
+      },
+      "db": {
+       "type": "number",
+       "description": "しきい値 dBFS（-24〜0）",
+       "default": -3
+      }
+     }
+    }
+   }
+  },
+  "cuts": {
+   "type": "array",
+   "description": "タイムラインから削除する区間。映像・音声を詰め、他clipの時刻を再マップする。⚠️ 細かいカットを多数入れる用途には使わない（クリップ分割で行う）",
+   "items": {
+    "type": "object",
+    "required": [
+     "start",
+     "end"
+    ],
+    "properties": {
+     "start": {
+      "type": "number"
+     },
+     "end": {
+      "type": "number"
+     }
+    }
+   }
+  },
+  "tracks": {
+   "type": "array",
+   "description": "**配列の先頭ほど前面**（種別は無関係。トラックの並びだけで重ね順が決まる）",
+   "items": {
+    "type": "object",
+    "required": [
+     "type",
+     "clips"
+    ],
+    "properties": {
+     "id": {
+      "type": "string",
+      "description": "patch.py のセレクタで使う。字幕の本文トラックは慣例的に \"cap\""
+     },
+     "type": {
+      "enum": [
+       "video",
+       "caption",
+       "image",
+       "audio",
+       "mask"
+      ],
+      "description": "mask=指定範囲をモザイク/ぼかし/黒塗りで隠す（社外秘の隠蔽用）"
+     },
+     "label": {
+      "type": "string",
+      "description": "UI表示名。patch.py は部分一致でも引ける"
+     },
+     "hidden": {
+      "type": "boolean",
+      "description": "トラックごと非表示（プレビュー・書き出しの両方でスキップ）",
+      "default": false
+     },
+     "muted": {
+      "type": "boolean",
+      "description": "トラックごとミュート（video/audio）",
+      "default": false
+     },
+     "clips": {
+      "type": "array",
+      "description": "**1トラック内でクリップを重ねてはいけない**（重ねたい要素は別トラックへ）",
+      "items": {
+       "type": "object",
+       "required": [
+        "start",
+        "end"
+       ],
+       "properties": {
+        "start": {
+         "type": "number",
+         "description": "タイムライン上の開始秒"
+        },
+        "end": {
+         "type": "number",
+         "description": "タイムライン上の終了秒"
+        },
+        "src": {
+         "type": "string",
+         "description": "video/image/audio: 素材ファイル名。**プロジェクト直下に置く**（basenameで解決するためサブフォルダ不可）"
+        },
+        "in": {
+         "type": "number",
+         "description": "video/audio: ソース内オフセット（頭出し）。長尺1本を in= で参照するのが非破壊の原則"
+        },
+        "audioLinked": {
+         "type": "boolean",
+         "description": "video: 映像の音声を鳴らすか",
+         "default": true
+        },
+        "opacity": {
+         "type": "number",
+         "description": "video: 透明度0-1",
+         "default": 1
+        },
+        "scale": {
+         "type": "number",
+         "description": "video: 拡大縮小倍率（1=幅フィット。ワイプは0.28前後）",
+         "default": 1
+        },
+        "crop": {
+         "type": "array",
+         "items": {
+          "type": "number"
+         },
+         "description": "video: トリミング[左,上,右,下]の正規化インセット"
+        },
+        "fadeIn": {
+         "type": "number",
+         "description": "video/audio: フェードイン秒（映像＋音声）",
+         "default": 0
+        },
+        "fadeOut": {
+         "type": "number",
+         "description": "video/audio: フェードアウト秒",
+         "default": 0
+        },
+        "gain": {
+         "type": "number",
+         "description": "video/audio: 音量（1=100%。1超は増幅。ffmpeg volume= と同一倍率）",
+         "default": 1
+        },
+        "fromVideo": {
+         "type": "boolean",
+         "description": "audio: 映像から分離した音声か"
+        },
+        "motion": {
+         "type": "object",
+         "description": "image: Ken Burns（クリップ長をかけた中央基準ズーム）。既定は静止。1本の動画で核心・オチの1〜2枚だけに付ける（全画像への交互適用は禁止=酔う。CLAUDE.md流儀参照）",
+         "properties": {
+          "zoom": {
+           "type": "number",
+           "description": "1超=寄り／1未満=引き（1/zoomから等倍へ）。1または未指定で静止"
+          }
+         }
+        },
+        "mode": {
+         "enum": [
+          "hide",
+          "show"
+         ],
+         "description": "mask: hide=範囲を隠す／show=範囲だけ残して他をぼかす",
+         "default": "hide"
+        },
+        "style": {
+         "enum": [
+          "mosaic",
+          "blur",
+          "solid"
+         ],
+         "description": "mask: 隠し方（mode=hide時）。※トップレベルの style とは別物",
+         "default": "mosaic"
+        },
+        "strength": {
+         "type": "integer",
+         "description": "mask: モザイクの粗さ／ぼかしの強さ（4〜40）",
+         "default": 12
+        },
+        "text": {
+         "type": "string",
+         "description": "caption: 字幕本文。\\n で明示改行（自動折り返しは禁則処理つきだが、見出し級は明示改行が確実）"
+        },
+        "color": {
+         "type": "array",
+         "items": {
+          "type": "integer"
+         },
+         "description": "caption: タイムライン帯の色RGB（描画には使わない。旧データは文字色として引き継ぐ）"
+        },
+        "textColor": {
+         "type": "array",
+         "items": {
+          "type": "integer"
+         },
+         "description": "caption: 文字色RGB（既定=白。強調は[255,214,80]）"
+        },
+        "bold": {
+         "type": "boolean",
+         "description": "caption: 太字"
+        },
+        "italic": {
+         "type": "boolean",
+         "description": "caption: イタリック"
+        },
+        "underline": {
+         "type": "boolean",
+         "description": "caption: 下線"
+        },
+        "strike": {
+         "type": "boolean",
+         "description": "caption: 打ち消し線"
+        },
+        "highlight": {
+         "type": "boolean",
+         "description": "caption: 座布団の有無",
+         "default": true
+        },
+        "highlightColor": {
+         "type": "array",
+         "items": {
+          "type": "integer"
+         },
+         "description": "caption: 座布団の色RGBA（A=0-255）"
+        },
+        "outline": {
+         "type": "boolean",
+         "description": "caption: 文字の縁取り"
+        },
+        "outlineColor": {
+         "type": "array",
+         "items": {
+          "type": "integer"
+         },
+         "description": "caption: 縁取りの色RGB"
+        },
+        "outlineWidth": {
+         "type": "integer",
+         "description": "caption: 縁取りの太さpx",
+         "default": 2
+        },
+        "shadow": {
+         "type": "boolean",
+         "description": "caption: 影"
+        },
+        "shadowColor": {
+         "type": "array",
+         "items": {
+          "type": "integer"
+         },
+         "description": "caption: 影の色RGB"
+        },
+        "shadowOpacity": {
+         "type": "number",
+         "description": "caption: 影の濃度0-1",
+         "default": 0.6
+        },
+        "align": {
+         "enum": [
+          "left",
+          "center",
+          "right"
+         ],
+         "description": "caption: 枠内の水平揃え",
+         "default": "center"
+        },
+        "valign": {
+         "enum": [
+          "top",
+          "middle",
+          "bottom"
+         ],
+         "description": "caption: 枠内の垂直揃え",
+         "default": "bottom"
+        },
+        "fontsize": {
+         "type": "integer",
+         "description": "caption: 文字サイズ（キャンバスpx。省略時 style.fontsize）"
+        },
+        "font": {
+         "type": "string",
+         "description": "caption: フォント名（省略時 style.font）"
+        },
+        "speaker": {
+         "type": "string",
+         "description": "旧形式（読み込み時にtext/colorへ変換される）"
+        },
+        "x": {
+         "type": "number",
+         "description": "caption/image/video/mask: 左上の正規化X（videoはワイプ配置。caption省略時は下部中央の帯）"
+        },
+        "y": {
+         "type": "number",
+         "description": "caption/image/video/mask: 左上の正規化Y"
+        },
+        "w": {
+         "type": "number",
+         "description": "caption/image/mask: 正規化幅（imageは高さがアスペクト維持で決まる）"
+        },
+        "h": {
+         "type": "number",
+         "description": "caption/mask: 正規化高さ"
+        },
+        "radius": {
+         "type": "number",
+         "minimum": 0,
+         "maximum": 1,
+         "description": "角丸(映像/画像)。0=なし〜1=正円(短辺基準・中央)。0.999以上は円マスク"
+        },
+        "anim": {
+         "type": "string",
+         "enum": [
+          "pop"
+         ],
+         "description": "登場アニメ(字幕)。pop=スタンプ: 1.9倍→等倍0.16秒の叩きつけ+0.06秒フェード(ドーンと同時に貼り付く)"
+        },
+        "rotate": {
+         "type": "number",
+         "minimum": -45,
+         "maximum": 45,
+         "description": "回転(度・時計回り+)。字幕=張り紙演出／画像・映像=傾ける。外接矩形が広がるぶんレンダラが表示サイズと位置を補正するので、見た目の大きさと中心は変わらない"
+        },
+        "panel": {
+         "type": "boolean",
+         "description": "字幕: 座布団を文字幅でなく枠(x,y,w,h)いっぱいに敷く(タイトル帯)。x<0/w>1で画面はみ出し"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}

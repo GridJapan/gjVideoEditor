@@ -1,0 +1,199 @@
+{
+ "meta": {
+  "title": "sample-hello",
+  "fps": 30,
+  "madeBy": {
+   "tool": "make_sample.py",
+   "script": "make_sample.py"
+  }
+ },
+ "canvas": {
+  "w": 1920,
+  "h": 1080,
+  "bg": "#121826"
+ },
+ "audio": {
+  "loudnorm": {
+   "on": true
+  },
+  "limiter": {
+   "on": true,
+   "db": -1.5
+  }
+ },
+ "cuts": [],
+ "_zorder": true,
+ "tracks": [
+  {
+   "id": "logo",
+   "type": "image",
+   "label": "ロゴ",
+   "clips": [
+    {
+     "src": "logo.png",
+     "start": 0,
+     "end": 12,
+     "x": 0.893,
+     "y": 0.035,
+     "w": 0.062
+    }
+   ]
+  },
+  {
+   "id": "cap",
+   "type": "caption",
+   "label": "字幕",
+   "clips": [
+    {
+     "start": 0.25,
+     "end": 3.6,
+     "text": "ことばで作って **そのまま編集**",
+     "x": 0.08,
+     "y": 0.74,
+     "w": 0.84,
+     "h": 0.16,
+     "fontsize": 66,
+     "anim": "pop",
+     "align": "center",
+     "valign": "middle",
+     "bold": true,
+     "outline": true,
+     "shadow": true,
+     "textColor": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "start": 3.9,
+     "end": 7.4,
+     "text": "画像は角丸にできます（**1.0 で円**）",
+     "x": 0.08,
+     "y": 0.76,
+     "w": 0.84,
+     "h": 0.13,
+     "fontsize": 52,
+     "align": "center",
+     "valign": "middle",
+     "bold": true,
+     "outline": true,
+     "shadow": true,
+     "textColor": [
+      255,
+      255,
+      255
+     ]
+    },
+    {
+     "start": 7.7,
+     "end": 11.8,
+     "text": "数字は**色で立たせる**",
+     "x": 0.08,
+     "y": 0.76,
+     "w": 0.84,
+     "h": 0.13,
+     "fontsize": 56,
+     "align": "center",
+     "valign": "middle",
+     "bold": true,
+     "outline": true,
+     "shadow": true,
+     "textColor": [
+      255,
+      255,
+      255
+     ]
+    }
+   ]
+  },
+  {
+   "id": "front",
+   "type": "image",
+   "label": "前面画像(円マスク)",
+   "clips": [
+    {
+     "src": "s2.png",
+     "start": 3.9,
+     "end": 7.4,
+     "x": 0.345,
+     "y": 0.06,
+     "w": 0.31,
+     "radius": 1.0,
+     "motion": {
+      "zoom": 1.06
+     }
+    }
+   ]
+  },
+  {
+   "id": "bg",
+   "type": "image",
+   "label": "紙芝居",
+   "clips": [
+    {
+     "src": "s1.png",
+     "start": 0,
+     "end": 3.9,
+     "x": 0,
+     "y": 0,
+     "w": 1
+    },
+    {
+     "src": "s1.png",
+     "start": 3.9,
+     "end": 7.7,
+     "x": 0,
+     "y": 0,
+     "w": 1
+    },
+    {
+     "src": "s3.png",
+     "start": 7.7,
+     "end": 12,
+     "x": 0,
+     "y": 0,
+     "w": 1,
+     "motion": {
+      "zoom": 1.07
+     }
+    }
+   ]
+  },
+  {
+   "id": "sfx",
+   "type": "audio",
+   "label": "効果音",
+   "clips": [
+    {
+     "src": "impact.mp3",
+     "start": 0.25,
+     "end": 0.78,
+     "in": 0,
+     "gain": 0.4
+    },
+    {
+     "src": "transition.mp3",
+     "start": 3.9,
+     "end": 4.3,
+     "in": 0,
+     "gain": 0.24
+    },
+    {
+     "src": "transition.mp3",
+     "start": 7.7,
+     "end": 8.1,
+     "in": 0,
+     "gain": 0.24
+    },
+    {
+     "src": "impact.mp3",
+     "start": 11.2,
+     "end": 11.73,
+     "in": 0,
+     "gain": 0.34
+    }
+   ]
+  }
+ ]
+}

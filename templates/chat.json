@@ -1,0 +1,62 @@
+{
+  "_doc": [
+    "チャット画面で会話を見せる型。",
+    "会話の往復そのものが中身になるネタで使う。地の文で説明すると成立しないもの。",
+    "チャット画面は tools/gen_chat.py が台本から自動生成する（発言ごとに1枚）。",
+    "⚠️ 字幕トラックを持たない。吹き出しの中の文字が字幕そのもので二重になるため。",
+    "⚠️ LINEのロゴ・商標は使わない。UIの見た目を借りた一般的なチャット画面として描く。"
+  ],
+  "canvas": {"w": 1080, "h": 1920, "bg": "#141b26"},
+  "style": {
+    "font": "Hiragino Kaku Gothic Pro", "fontsize": 54, "marginBottom": 120,
+    "box": {"color": [18, 28, 46, 235], "radius": 8, "pad": 22}
+  },
+  "colors": {"navy": [18, 28, 46], "gold": [214, 173, 92]},
+  "gap": 0.30,
+
+  "parts": {
+    "logo":  {"x": 0.579, "y": 0.027, "w": 0.38},
+    "chip":  {"x": 0.06, "y": 0.045, "w": 0.5, "h": 0.032, "fontsize": 30,
+              "bold": true, "align": "left", "valign": "middle",
+              "textColor": [214, 173, 92], "highlight": false, "shadow": false},
+    "source":{"x": 0.06, "y": 0.735, "w": 0.88, "h": 0.03, "fontsize": 21,
+              "bold": false, "align": "left", "valign": "middle",
+              "textColor": [196, 205, 218], "highlight": false, "shadow": false},
+    "card":  {"x": 0.06, "w": 0.88, "h": 0.20, "fontsize": 58, "bold": true,
+              "align": "center", "valign": "middle", "textColor": [255, 255, 255],
+              "highlight": true, "highlightColor": [18, 28, 46, 245],
+              "shadow": false, "anim": "pop"},
+    "banner": {"x": 0, "y": 0.78, "w": 1}
+  },
+
+  "chat_image": {"x": 0, "y": 0.115, "w": 1},
+  "_card_y_doc": "カードの縦位置。会話中は下(0.615)、締め(fade背景)は中央(0.36)、画面なしは0.30",
+  "card_y": {"with_chat": 0.615, "fade": 0.36, "none": 0.30},
+
+  "sfx": {
+    "hook": {"name": "text-impact", "gain": 0.22},
+    "scene": {"names": ["sceneswitch", "whoosh"], "gain": 0.13},
+    "number": {"name": "kira", "gain": 0.15},
+    "end": {"name": "decision", "gain": 0.20}
+  },
+
+  "tracks": [
+    {"id": "logo",   "type": "image",   "label": "ロゴ",     "role": "logo"},
+    {"id": "title2", "type": "caption", "label": "話数チップ",     "role": "chip"},
+    {"id": "src",    "type": "caption", "label": "出典",           "role": "source"},
+    {"id": "card",   "type": "caption", "label": "カード",         "role": "cards"},
+    {"id": "band",   "type": "image",   "label": "帯バナー",       "role": "banner"},
+    {"id": "img",    "type": "image",   "label": "チャット画面",   "role": "images"},
+    {"id": "bgimg",  "type": "image",   "label": "背景",           "role": "background"},
+    {"id": "narr",   "type": "audio",   "label": "ナレーション",   "role": "narration"},
+    {"id": "sfx",    "type": "audio",   "label": "効果音",         "role": "sfx"},
+    {"id": "bgm",    "type": "audio",   "label": "BGM",            "role": "bgm"}
+  ],
+
+  "assets": {
+    "required": ["logo.png", "banner.png", "bg.png"],
+    "sfx": ["whoosh.mp3", "kira.mp3", "text-impact.mp3", "sceneswitch.mp3", "decision.mp3"],
+    "bgm_default": "citypop-cassette.mp3",
+    "images": "tools/gen_chat.py が台本から自動生成（chat1..N.png と chat_fade.png）"
+  }
+}

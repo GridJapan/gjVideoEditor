@@ -1,0 +1,10 @@
+# video-editor の Python 依存（どちらも無料）
+#
+#   pip install -r requirements.txt
+#
+# ffmpeg は pip では入りません。別途どうぞ:
+#   Mac     : brew install ffmpeg
+#   Windows : winget install Gyan.FFmpeg   （実行後にターミナルを開き直す）
+
+Pillow>=10.0        # 字幕・図形の描画（renderer/render.py）
+edge-tts>=6.1       # ナレーション生成（tools/gen_voice.py --engine edge）。無料・APIキー不要

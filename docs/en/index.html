@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>video-editor — Build with words, finish in the UI</title>
+<meta name="description" content="Ask an AI in plain language, then finish it on a timeline UI. Runs on the Python standard library, Pillow and ffmpeg. No cloud, no API keys. MIT licensed.">
+<meta property="og:title" content="video-editor">
+<meta property="og:description" content="Build with words, finish in the UI. No dependencies to speak of. MIT licensed.">
+<meta property="og:image" content="../assets/editor.png">
+<meta property="og:type" content="website">
+<link rel="alternate" hreflang="ja" href="https://gridjapan.github.io/gjVideoEditor/jp/">
+<link rel="alternate" hreflang="en" href="https://gridjapan.github.io/gjVideoEditor/en/">
+<style>
+  :root{
+    --ink:#0f172a; --body:#475569; --muted:#94a3b8;
+    --line:#e2e8f0; --bg:#ffffff; --soft:#f8fafc;
+    --accent:#2563eb; --warm:#e2984c;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
+    color:var(--body);background:var(--bg);line-height:1.9;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px}
+
+  /* header */
+  header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.88);
+    backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}
+  .hbar{display:flex;align-items:center;gap:20px;height:60px}
+  .logo{font-weight:700;color:var(--ink);font-size:15px;letter-spacing:.02em}
+  .hbar nav{margin-left:auto;display:flex;gap:18px;align-items:center;font-size:13px}
+  .hbar nav a{color:var(--body)}
+  .lang{color:var(--muted);font-size:12px}
+  .lang a{color:var(--muted)}
+  .lang .on{color:var(--ink);font-weight:600}
+  .ghbtn{background:var(--ink);color:#fff;padding:7px 14px;border-radius:7px;font-weight:600}
+  .ghbtn:hover{text-decoration:none;opacity:.86}
+
+  /* hero */
+  .hero{padding:76px 0 8px;text-align:center}
+  .hero h1{font-size:40px;line-height:1.45;color:var(--ink);margin:0 0 18px;letter-spacing:-.01em}
+  .hero h1 em{font-style:normal;color:var(--accent)}
+  .lede{font-size:17px;max-width:640px;margin:0 auto 12px}
+  .sub{font-size:14px;color:var(--muted);margin-bottom:30px}
+  .shot{width:100%;border-radius:12px;border:1px solid var(--line);
+    box-shadow:0 18px 48px rgba(15,23,42,.10);display:block}
+  .cap{font-size:12px;color:var(--muted);text-align:center;margin-top:10px}
+
+  /* sections */
+  section{padding:64px 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:0}
+  .num{font:600 12px/1 var(--mono);color:var(--warm);letter-spacing:.14em;margin-bottom:12px}
+  h2{font-size:25px;color:var(--ink);margin:0 0 14px;line-height:1.6;letter-spacing:-.01em}
+  h3{font-size:16px;color:var(--ink);margin:26px 0 8px}
+  p{margin:0 0 14px}
+  .note{font-size:13px;color:var(--muted)}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:24px}
+  .card{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+  .card h3{margin-top:0}
+  .card p{font-size:14px;margin-bottom:0}
+
+  pre{background:#0f172a;color:#e2e8f0;padding:16px 18px;border-radius:9px;overflow-x:auto;
+    font:13px/1.75 var(--mono);margin:16px 0}
+  pre .c{color:#7c8aa0}
+  code{font:.92em var(--mono);background:var(--soft);border:1px solid var(--line);
+    padding:1px 6px;border-radius:5px;color:var(--ink)}
+  pre code{background:none;border:0;padding:0;color:inherit}
+
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--ink);font-weight:600;white-space:nowrap}
+
+  video{width:100%;border-radius:10px;border:1px solid var(--line);display:block;background:#000}
+
+  footer{border-top:1px solid var(--line);padding:34px 0 60px;font-size:13px;color:var(--muted)}
+  footer a{color:var(--body)}
+
+
+  /* AIへの依頼文ブロック */
+  .ask{border:2px solid var(--accent);border-radius:11px;overflow:hidden;margin:20px 0}
+  .ask-head{display:flex;align-items:center;gap:12px;padding:12px 16px;
+    background:#eff4fe;border-bottom:1px solid #cfdcf8;font-size:13px;font-weight:600;color:var(--ink)}
+  .copybtn{margin-left:auto;background:var(--accent);color:#fff;border:0;cursor:pointer;
+    padding:8px 16px;border-radius:7px;font:600 13px/1 inherit;white-space:nowrap}
+  .copybtn:hover{opacity:.88}
+  .copybtn.done{background:#16a34a}
+  .ask pre{margin:0;border-radius:0;white-space:pre-wrap;word-break:break-word;
+    max-height:none;font-size:12.5px}
+
+
+  .badge{display:inline-block;font-size:12px;font-weight:600;color:var(--warm);
+    border:1px solid #f0d9b8;background:#fdf7ee;border-radius:999px;
+    padding:4px 14px;margin:0 0 20px;letter-spacing:.03em}
+  .credit{margin-top:6px;font-size:12px;color:var(--muted)}
+
+  @media(max-width:720px){
+    .hero{padding:48px 0 4px}
+    .hero h1{font-size:28px}
+    .cols{grid-template-columns:1fr;gap:16px}
+    .hbar nav a:not(.ghbtn):not(.lang-a){display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hbar">
+    <span class="logo">🎬 GJ VIDEO EDITOR</span>
+    <nav>
+      <a href="#how">How</a>
+      <a href="#features">Features</a>
+      <a href="#viewer">Viewer</a>
+      <a href="#install">Install</a>
+      <span class="lang"><a href="../jp/" class="lang-a">日本語</a> / <span class="on">EN</span></span>
+      <a class="ghbtn" href="https://github.com/GridJapan/gjVideoEditor">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <p class="badge">Work in progress · v0.10.0</p>
+    <h1>Video made by AI, <em>editable in a real UI.</em></h1>
+    <p class="lede">
+      Ask for a video, then drag what came out around on a timeline.
+      Prompt again afterwards and your manual edits are still there.
+    </p>
+    <p class="sub">Python standard library + Pillow + ffmpeg. No cloud, no API keys.</p>
+    <img class="shot" src="../assets/editor.png" alt="The video-editor workspace: preview on top, multi-track timeline below">
+    <p class="cap">The workspace. This sample runs right after you clone.</p>
+  </div>
+
+  <section id="how">
+    <div class="num">01 / How it works</div>
+    <h2>The AI and the UI write to one file</h2>
+    <p>
+      Have an AI make you a video and what usually comes out is code — React, HTML.
+      To change one thing you either read the code or go back to prompting.
+    </p>
+    <p>
+      Here, both the AI and you edit a single <code>project.json</code>.
+      <strong>You can edit what the AI produced right on the timeline, and prompting again
+      won't wipe out what you did by hand.</strong>
+    </p>
+
+    <div class="cols">
+      <div class="card">
+        <h3>The AI writes (80%)</h3>
+        <p>Changes land as diffs. Overlaps, missing assets and out-of-range durations are <strong>rejected before saving</strong>, so you never end up with a broken project.</p>
+      </div>
+      <div class="card">
+        <h3>You fix (20%)</h3>
+        <p>Drag things around on the timeline in your browser. Conflicting edits from elsewhere are detected and blocked.</p>
+      </div>
+    </div>
+
+    <p class="note" style="margin-top:18px">
+      The AI can also read back what you changed. If you keep making the same correction, its defaults are wrong — and that's fixable.
+    </p>
+  </section>
+
+  <section id="features">
+    <div class="num">02 / Features</div>
+    <h2>Everything you'd expect from an editor</h2>
+
+    <table>
+      <tr><th>Timeline</th><td>Multi-track video, subtitles, images and audio. Drag &amp; drop, split, undo/redo, snapping, zoom</td></tr>
+      <tr><th>Non-destructive</th><td>Keep one long source and just move the in-point. Nothing is cut out, so <strong>you can always extend a clip's edges</strong></td></tr>
+      <tr><th>Subtitles</th><td>Drag, resize, fonts, 360° rotation, <strong>vertical writing</strong>, inline emphasis, edge snapping</td></tr>
+      <tr><th>Picture-in-picture</th><td>Drag and scale right on the preview. Set the corner radius to 1.0 for a perfect circle</td></tr>
+      <tr><th>Export</th><td>MP4 / WebM / GIF / MP3, with quality and resolution options</td></tr>
+      <tr><th>Narration</th><td>Free text-to-speech, no API key. Mix multiple voices</td></tr>
+      <tr><th>Batch</th><td>One script file, one command, one video. You don't write Python</td></tr>
+    </table>
+
+    <h3 style="margin-top:34px">Made with this tool</h3>
+    <p class="note">The 28-second video below was assembled and exported with this tool.</p>
+    <video controls preload="none" poster="../assets/sample-poster.jpg">
+      <source src="../assets/sample.mp4" type="video/mp4">
+    </video>
+    <p class="cap">Illustrations by AI, narration by free TTS. Assembly, music, sound effects and export all done here</p>
+  </section>
+
+  <section id="viewer">
+    <div class="num">03 / Viewer</div>
+    <h2>Review what you made, right there</h2>
+    <p>
+      Click the logo and <strong>GJ VIDEO VIEWER</strong> opens.
+      Your exports are listed newest first, so <strong>you can play them back without hunting for files.</strong>
+    </p>
+    <img class="shot" src="../assets/viewer.png" alt="GJ VIDEO VIEWER: exported videos on the left, player on the right">
+    <p class="cap">Exports on the left, player on the right. Loop playback included</p>
+    <table>
+      <tr><th>List</th><td>Shows exports across all projects, newest first. You can also point it at any folder</td></tr>
+      <tr><th>Playback</th><td>Thumbnails are generated automatically and cached, so it opens instantly after the first time. 🔁 loops</td></tr>
+      <tr><th>Going back</th><td>It opens as an overlay, so closing it leaves <strong>your playhead and selection untouched</strong></td></tr>
+    </table>
+  </section>
+
+  <section id="claude">
+    <div class="num">04 / Recommended setup</div>
+    <h2>Chat on the left, tool on the right</h2>
+    <p>
+      Launch Claude Code from the Claude desktop app and keep
+      <strong>the chat on the left and this editor in the preview pane on the right.</strong>
+    </p>
+    <img class="shot" src="../assets/split-view.png" alt="Claude Code chat on the left, the video-editor workspace on the right">
+    <p class="cap">Ask, adjust and review — all in one window</p>
+
+    <table>
+      <tr><th>Left</th><td>Say "turn the music down a bit" or "keep the logo top-right" and the change lands</td></tr>
+      <tr><th>Right</th><td>A fully usable editor. You can review exported videos here too</td></tr>
+    </table>
+    <p class="note">
+      The repo ships a <code>CLAUDE.md</code>, so Claude Code already knows this tool's conventions
+      on the first run. And of course it works fine standalone, without Claude.
+    </p>
+  </section>
+
+  <section id="install">
+    <div class="num">05 / Install</div>
+    <h2>The easiest way: ask an AI</h2>
+    <p>
+      Copy the request below and send it to the AI agent you already use
+      (Claude Code, Codex, Cursor, and so on).
+      <strong>It handles what it can and only stops for the parts that need you.</strong>
+      You don't need to know git or the terminal.
+    </p>
+
+    <div class="ask">
+      <div class="ask-head">
+        <span>Copy this and send it to your AI</span>
+        <button id="copyBtn" class="copybtn" type="button">Copy request</button>
+      </div>
+      <pre id="askText"><code>Please set up video-editor on this machine and get it running.
+
+Repository: https://github.com/GridJapan/gjVideoEditor
+
+Steps:
+1. git clone it into a sensible working folder
+2. Check the requirements (run `python3 tools/_deps.py` for a list).
+   Anything missing is printed with install instructions — follow those.
+   - Python 3 and ffmpeg are required (Pillow installs itself on first launch)
+3. Run `python3 tools/make_sample.py` to generate the sample assets
+4. Start the server with `python3 ui/server.py` and open http://localhost:8765/
+
+Once it works, try exporting the sample video and tell me the result:
+  python3 renderer/render.py projects/sample-hello
+
+Let me know if anything needs my input, such as approving an install.</code></pre>
+    </div>
+    <p class="note">
+      When a step needs your password or your approval to install something,
+      <strong>the AI stops and tells you.</strong>
+    </p>
+
+    <h3 style="margin-top:38px">Or do it yourself, in three steps</h3>
+
+<pre><code><span class="c"># 1. Get it</span>
+git clone https://github.com/GridJapan/gjVideoEditor.git
+cd video-editor
+
+<span class="c"># 2. Generate the sample assets (first time only)</span>
+python3 tools/make_sample.py
+
+<span class="c"># 3. Launch — double-click start.command (Mac) or launch.bat (Windows)</span></code></pre>
+
+    <p>Your browser opens with the sample already loaded.</p>
+
+    <h3>Requirements</h3>
+    <table>
+      <tr><th></th><th>Mac</th><th>Windows</th></tr>
+      <tr><th>Python 3</th><td>Already installed</td><td>From the Microsoft Store</td></tr>
+      <tr><th>ffmpeg</th><td><code>brew install ffmpeg</code></td><td><code>winget install Gyan.FFmpeg</code></td></tr>
+      <tr><th>Pillow</th><td colspan="2">Installed automatically on first launch</td></tr>
+    </table>
+    <p class="note">
+      If something is missing, the launcher <strong>tells you exactly how to install it</strong>.
+      Run <code>python3 tools/_deps.py</code> to see what you have.
+    </p>
+  </section>
+
+  <section id="license">
+    <div class="num">06 / License</div>
+    <h2>MIT. Commercial use and modification are fine</h2>
+    <p>
+      The bundled sample's images and sound effects are all generated by a script in this repo.
+      No third-party works are included, so <strong>you can redistribute it as is</strong>.
+    </p>
+    <p class="note">
+      When you add your own assets, always record where they came from and under what licence.
+      See <a href="https://github.com/GridJapan/gjVideoEditor/blob/main/NOTICE">NOTICE</a> for details.
+    </p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>
+      <a href="https://github.com/GridJapan/gjVideoEditor">GitHub</a> ・
+      <a href="https://github.com/GridJapan/gjVideoEditor/issues">Issues &amp; requests</a> ・
+      <a href="../jp/">日本語</a>
+    </p>
+    <p>MIT License · Copyright © 2026 GridJapan</p>
+    <p class="credit">Built by Ryosuke Izumi (GridJapan)</p>
+  </div>
+</footer>
+
+</body>
+</html>

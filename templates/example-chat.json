@@ -1,0 +1,118 @@
+{
+ "template": "chat",
+ "name": "example-chat",
+ "chip": "#社内のAIルール",
+ "source": "出典: JIPDEC・アイ・ティ・アール「企業IT利活用動向調査2025」(2025年3月14日公表・従業員50名以上/有効回答1,110件)",
+ "bgm": "citypop-cassette.mp3",
+ "chat": {
+  "title": "社内チャット",
+  "speakers": {
+   "A": {
+    "name": "営業部 田中",
+    "side": "left"
+   },
+   "B": {
+    "name": "総務部 佐藤",
+    "side": "right"
+   }
+  },
+  "lines": [
+   {
+    "who": "A",
+    "text": "ChatGPTすごいね\n見積の文面が一瞬でできた"
+   },
+   {
+    "who": "B",
+    "text": "うちって生成AI\n導入してたっけ？"
+   },
+   {
+    "who": "A",
+    "text": "いや、個人のスマホ\n会社は禁止だから"
+   },
+   {
+    "who": "B",
+    "text": "…今、何を貼った？"
+   },
+   {
+    "who": "A",
+    "text": "取引先リスト\n分析してもらおうと思って"
+   },
+   {
+    "who": "B",
+    "text": "それ、会社が禁止してる\n理由そのものだよ"
+   }
+  ]
+ },
+ "beats": [
+  {
+   "id": "v1",
+   "narration": "ある会社の、社内チャットです。",
+   "voice": "narrator-m-lo",
+   "card": "**その使い方**、\n会社は知っていますか"
+  },
+  {
+   "id": "v2",
+   "narration": "チャットGPTすごいね。見積の文面が一瞬でできた。",
+   "voice": "narrator-m",
+   "screen": 1
+  },
+  {
+   "id": "v3",
+   "narration": "うちって生成エーアイ、導入してたっけ。",
+   "voice": "narrator-f",
+   "screen": 2
+  },
+  {
+   "id": "v4",
+   "narration": "いや、個人のスマホ。会社は禁止だから。",
+   "voice": "narrator-m",
+   "screen": 3
+  },
+  {
+   "id": "v5",
+   "narration": "今、何を貼った。",
+   "voice": "narrator-f",
+   "screen": 4
+  },
+  {
+   "id": "v6",
+   "narration": "取引先リスト。分析してもらおうと思って。",
+   "voice": "narrator-m",
+   "screen": 5
+  },
+  {
+   "id": "v7",
+   "narration": "それ、会社が禁止してる理由そのものだよ。",
+   "voice": "narrator-f",
+   "screen": 6
+  },
+  {
+   "id": "v8",
+   "narration": "従業員、二百九十九人以下の会社では、",
+   "voice": "narrator-m-lo",
+   "screen": "fade",
+   "card": "従業員**299人以下**の会社"
+  },
+  {
+   "id": "v9",
+   "narration": "社員が個人で勝手に使っている割合が、二十六パーセント。",
+   "voice": "narrator-m-lo",
+   "screen": "fade",
+   "card": "社員が勝手に使っている\n**26.0%**"
+  },
+  {
+   "id": "v10",
+   "narration": "会社として導入している、二十三てん六パーセントを、上回っています。",
+   "voice": "narrator-m-lo",
+   "screen": "fade",
+   "card": "会社として導入している\n**23.6%**"
+  },
+  {
+   "id": "v11",
+   "narration": "禁止しても、使われる。ルールがないと、隠れて使うになります。",
+   "voice": "narrator-m-lo",
+   "screen": "fade",
+   "card": "禁止しても使われる\n── **ルールから決めませんか**"
+  }
+ ]
+}

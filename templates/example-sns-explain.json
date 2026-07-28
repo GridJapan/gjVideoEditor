@@ -1,0 +1,66 @@
+{
+ "template": "sns-explain",
+ "name": "example-explain",
+ "chip": "#中小企業とAI",
+ "source": "出典: 中小企業基盤整備機構「中小企業のAI・IT導入に関する調査」(2026年3月公表)",
+ "bgm": "chill-223am.mp3",
+ "hook": {
+  "text": "AI導入で足りないのは\nお金じゃなかった",
+  "dur": 3.0
+ },
+ "outro": {
+  "text": "足りないのは**「事例」**だった\n同じ規模の会社がどう使ったか\n── **だから事例を出していきます**",
+  "dur": 4.6
+ },
+ "beats": [
+  {
+   "id": "n1",
+   "narration": "中小企業がエーアイ導入でいちばん困っていること。",
+   "caption": "AI導入で\n**いちばん困っていること**",
+   "image": "c1",
+   "layout": "boxed"
+  },
+  {
+   "id": "n2",
+   "narration": "実は、お金ではありませんでした。",
+   "caption": "実は、**お金じゃない**",
+   "image": "c2",
+   "layout": "over_img"
+  },
+  {
+   "id": "n3",
+   "narration": "足りない情報の一位は、成功事例・活用事例。八十三てん三パーセント。",
+   "caption": "足りない情報の1位は\n「成功事例・活用事例」**83.3%**",
+   "image": "c3",
+   "layout": "side_l"
+  },
+  {
+   "id": "n4",
+   "narration": "二位は、製品を選ぶための情報。七十九てん八パーセント。",
+   "caption": "2位は\n「製品を選ぶ情報」**79.8%**",
+   "image": "c3",
+   "layout": "side_r"
+  },
+  {
+   "id": "n5",
+   "narration": "ツールはある。予算もなんとかなる。",
+   "caption": "ツールはある。\n予算もなんとかなる",
+   "image": "c2",
+   "layout": "boxed"
+  },
+  {
+   "id": "n6",
+   "narration": "ないのは、うちと同じ規模の会社の話です。",
+   "caption": "ないのは\n**“うちと同じ規模”の話**",
+   "image": "c4",
+   "layout": "over"
+  },
+  {
+   "id": "n7",
+   "narration": "だから私たちは、事例を出していきます。",
+   "caption": "だから、\n**事例を出していきます**",
+   "image": "c5",
+   "layout": "over_img"
+  }
+ ]
+}
