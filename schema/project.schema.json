@@ -247,7 +247,7 @@
         },
         "opacity": {
          "type": "number",
-         "description": "video: 透明度0-1",
+         "description": "video/image: 透明度0-1",
          "default": 1
         },
         "scale": {
@@ -264,12 +264,12 @@
         },
         "fadeIn": {
          "type": "number",
-         "description": "video/audio: フェードイン秒（映像＋音声）",
+         "description": "video/image/audio: フェードイン秒（画像はアルファで背景に沈む）",
          "default": 0
         },
         "fadeOut": {
          "type": "number",
-         "description": "video/audio: フェードアウト秒",
+         "description": "video/image/audio: フェードアウト秒",
          "default": 0
         },
         "gain": {
@@ -281,6 +281,37 @@
          "type": "boolean",
          "description": "audio: 映像から分離した音声か"
         },
+        "loop": {
+         "type": "boolean",
+         "description": "audio: ソースを無限リピートしてクリップの長さまで埋める（BGMが尺より短いとき用）。ソース長検査が免除される唯一の例外",
+         "default": false
+        },
+        "flip": {
+         "type": "boolean",
+         "description": "video/image: 左右反転",
+         "default": false
+        },
+        "adjust": {
+         "type": "object",
+         "description": "video/image: 色調整。意味はCSS filterと同じ（brightness=乗算 / contrast=中間値基準の伸縮 / saturation=彩度）。1=無補正。※ color は字幕の旧文字色で使用済みのため別名",
+         "properties": {
+          "brightness": {
+           "type": "number",
+           "description": "明るさ0-2（1=そのまま）",
+           "default": 1
+          },
+          "contrast": {
+           "type": "number",
+           "description": "コントラスト0-2（1=そのまま）",
+           "default": 1
+          },
+          "saturation": {
+           "type": "number",
+           "description": "彩度0-2（0=白黒、1=そのまま）",
+           "default": 1
+          }
+         }
+        },
         "motion": {
          "type": "object",
          "description": "image: Ken Burns（クリップ長をかけた中央基準ズーム）。既定は静止。1本の動画で核心・オチの1〜2枚だけに付ける（全画像への交互適用は禁止=酔う。CLAUDE.md流儀参照）",
@@ -288,6 +319,16 @@
           "zoom": {
            "type": "number",
            "description": "1超=寄り／1未満=引き（1/zoomから等倍へ）。1または未指定で静止"
+          },
+          "pan": {
+           "type": "string",
+           "enum": [
+            "left",
+            "right",
+            "up",
+            "down"
+           ],
+           "description": "Ken Burns パン。切り出し窓が動く方向（left=窓が左へ）。zoom未指定なら1.1で自動的に寄る"
           }
          }
         },
@@ -446,9 +487,20 @@
         "anim": {
          "type": "string",
          "enum": [
-          "pop"
+          "pop",
+          "countup",
+          "typewriter",
+          "slide"
          ],
-         "description": "登場アニメ(字幕)。pop=スタンプ: 1.9倍→等倍0.16秒の叩きつけ+0.06秒フェード(ドーンと同時に貼り付く)"
+         "description": "登場アニメ(字幕)。pop=スタンプ(1.9倍→等倍0.16秒の叩きつけ) / countup=金額が0から実値へカウントアップ / typewriter=1文字ずつ表示 / slide=画面外から滑り込む"
+        },
+        "animDur": {
+         "type": "number",
+         "description": "countup/typewriter/slide が動く秒数(既定 countup,typewriter=0.9 / slide=0.32)"
+        },
+        "countAll": {
+         "type": "boolean",
+         "description": "countup で全ての数値を動かす。既定falseは金額($139/22,000円/¥500)のみ動かし、順位の#2や'10 min'は固定する"
         },
         "rotate": {
          "type": "number",
@@ -459,6 +511,63 @@
         "panel": {
          "type": "boolean",
          "description": "字幕: 座布団を文字幅でなく枠(x,y,w,h)いっぱいに敷く(タイトル帯)。x<0/w>1で画面はみ出し"
+        },
+        "slideFrom": {
+         "type": "string",
+         "enum": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+         ],
+         "description": "slide の入射方向(既定left)"
+        },
+        "bar": {
+         "type": "object",
+         "description": "比較バー。字幕の下に横棒を敷き、長さで差を見せる。countupと併用すると数字と一緒に伸びる",
+         "properties": {
+          "ratio": {
+           "type": "number",
+           "description": "満幅に対する長さ 0〜1"
+          },
+          "color": {
+           "type": "array",
+           "description": "棒の色 [R,G,B(,A)]"
+          },
+          "trackColor": {
+           "type": "array",
+           "description": "下地の色 [R,G,B(,A)]"
+          },
+          "height": {
+           "type": "number",
+           "description": "棒の高さ(フォントサイズ比・既定0.20)"
+          }
+         }
+        },
+        "speed": {
+         "type": "number",
+         "description": "video: 再生速度(0.25〜4)。出力尺は start/end のまま、ソースを speed 倍で消費する（end ≤ start + (ソース長-in)/speed）"
+        },
+        "duck": {
+         "type": [
+          "boolean",
+          "object"
+         ],
+         "description": "audio: BGMダッキング。true でナレーション(id/labelにnarr/ナレ)の区間だけ自動で沈む。{\"to\":0.25,\"fade\":0.35,\"against\":\"<トラックidかlabel>\"} で調整",
+         "properties": {
+          "to": {
+           "type": "number",
+           "description": "沈んだときの倍率(0〜1・既定0.25)"
+          },
+          "fade": {
+           "type": "number",
+           "description": "沈み・戻りの秒数(既定0.35)"
+          },
+          "against": {
+           "type": "string",
+           "description": "相手トラック(idかlabelの部分一致)。省略時はnarr/ナレ"
+          }
+         }
         }
        }
       }

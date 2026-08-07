@@ -22,37 +22,18 @@ spec.json:
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 import _wincompat  # noqa: E402  Windows cp932 対策（副作用で標準出力をUTF-8化）
+import _deps       # noqa: E402  依存の確認（Python探索も _deps に集約してある）
 import argparse, json, os, shutil, subprocess, sys, urllib.error, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 
-def _pyenv_pythons():
-    """pyenv に入っている python を新しい順に列挙する。
-    バージョンを決め打ちしない（作者の 3.11.9 を書くと他の人の環境で外れる）。"""
-    base = Path(os.environ.get("PYENV_ROOT") or (Path.home() / ".pyenv")) / "versions"
-    if not base.is_dir():
-        return []
-    def vkey(d):        # 文字列順だと 3.9.1 が 3.11.9 より新しい扱いになるため数値で比べる
-        return tuple(int(x) if x.isdigit() else -1 for x in d.name.split("."))
-    vers = sorted((d for d in base.iterdir() if d.is_dir()), key=vkey, reverse=True)
-    return [str(v / "bin" / "python3") for v in vers]
-
-
 def _edge_python():
-    """edge_tts が import できるPythonを探す。
-    ①この実行Python ②PATH上のpython3/python ③pyenv配下（新しい順）。
-    見つからなければ①を返して、実行時に理由つきで落とす。"""
-    cands = [sys.executable, shutil.which("python3"), shutil.which("python"), *_pyenv_pythons()]
-    seen = set()
-    for c in cands:
-        if not c or c in seen or not os.path.exists(c):
-            continue
-        seen.add(c)
-        r = subprocess.run([c, "-c", "import edge_tts"], capture_output=True)
-        if r.returncode == 0:
-            return c
-    return sys.executable
+    """edge_tts が import できるPythonを探す（探索の実装は _deps.python_with）。
+    見つからなければこの実行Pythonを返して、実行時に理由つきで落とす。
+    ⚠️ **依存検査（_deps.missing）と同じ判定を使うこと。** 別実装にすると
+    「gen_voice は動くのに make_video が拒否する」食い違いが起きる（2026-08-07に発生）。"""
+    return _deps.python_with("edge_tts") or sys.executable
 
 EDGE_PY = _edge_python()
 
@@ -139,10 +120,46 @@ def list_eleven():
         print(f'{v["voice_id"]}  {v.get("name",""):<20} {labels.get("language","")}/{labels.get("gender","")}/{labels.get("descriptive","")}')
 
 
+def eleven_preflight(spec, presets):
+    """有料TTSを1文字も焼く前に、残量が足りるかを確かめる。
+
+    足りないまま走ると「前半だけ生成されて途中で失敗」になり、
+    課金だけされて使えない音声が残る。作り直しのたびに全文を焼き直す運用
+    （台本を詰めると毎回再生成になる）では、残量の把握が効く。
+    確認できないとき（キー無し・通信不可）は黙って素通しする。
+    """
+    need = sum(len(s.get("tts_text") or s.get("text") or "")
+               for s in spec["segments"]
+               if (presets.get(s.get("voice", "narrator-m")) or {}).get("engine") == "eleven")
+    if not need:
+        return
+    key = os.environ.get("ELEVENLABS_API_KEY")
+    if not key:
+        return          # キー欠落は gen_eleven 側が人間可読エラーで止める
+    try:
+        req = urllib.request.Request("https://api.elevenlabs.io/v1/user/subscription",
+                                     headers={"xi-api-key": key})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            d = json.loads(r.read().decode())
+        left = int(d.get("character_limit", 0)) - int(d.get("character_count", 0))
+    except Exception:
+        return          # 残量が読めないだけで生成を止めない
+    if left < need:
+        raise SystemExit(
+            f"❌ ElevenLabs の残量が足りません（必要 {need:,}文字 / 残り {left:,}文字）\n"
+            f"   対処3案:\n"
+            f"     1. 台本を削る（{need - left:,}文字ぶん）\n"
+            f"     2. 一部の voice を edge（無料）に変える\n"
+            f"     3. プランを上げる / リセットを待つ")
+    if left - need < 5000:
+        print(f"⚠️ 生成後の残量が少なくなります（{left:,} → {left - need:,}文字）", file=sys.stderr)
+
+
 def generate(spec_path, outdir):
     presets = load_presets()
     spec = json.loads(Path(spec_path).read_text(encoding="utf-8"))
     out = Path(outdir); out.mkdir(parents=True, exist_ok=True)
+    eleven_preflight(spec, presets)
     overs = []
     for s in spec["segments"]:
         pkey = s.get("voice", "narrator-m")

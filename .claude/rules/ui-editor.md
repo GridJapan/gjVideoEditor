@@ -70,6 +70,16 @@ paths:
 - 閉じるとき `video` の src を外す。**外さないと裏で読み続ける**
 - 一覧はメタデータのみ。`preload` させない
 
+## UIパーツ画像（ロゴ・ボタンアイコン）
+
+codex生成のPNGを **data URIで `<style id="uiimgs">` に埋め込んでいる**（HTML1枚哲学の維持・
+サーバ再起動なしで反映させるため）。手で編集しない。
+
+- 差し替え/追加: PNGを用意 → `python3 tools/make_ui_assets.py --raw <フォルダ>`（最適化→
+  `ui/assets/` 保存→埋め込みまで一括）。埋め込みだけ再生成は引数なし
+- ボタンのアイコンは `::before` 背景画像（`.bico` ＋ `#ボタンID.bico::before`）。
+  **子要素の `<img>` にしないこと** — JSが `textContent` を書き換えるボタンで画像ごと消える
+
 ## その他
 
 - **終了した `<video>` に `play()` すると先頭に巻き戻る**（HTML5仕様）。クリップ終端では `play()` を呼ばない

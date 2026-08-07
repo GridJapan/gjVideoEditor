@@ -118,6 +118,39 @@
     "style": 0.15,
     "similarity_boost": 0.8
    }
+  },
+  "sara": {
+   "engine": "eleven",
+   "ref": "l7ME2dcqpdvq6E8sCS24",
+   "label": "Sara (ja/プロ・落ち着き・バイリンガル)"
+  },
+  "claire": {
+   "engine": "eleven",
+   "ref": "HxuFAkkGVeQs1sDIMF5g",
+   "label": "Claire_momo (ja/かわいい)"
+  },
+  "sumire": {
+   "engine": "eleven",
+   "ref": "KtSs8OSniRPofXnr5PeA",
+   "label": "Sumire_guri (ja/かわいい)"
+  },
+  "en-alice": {
+   "engine": "eleven",
+   "ref": "Xb7hH8MSUJpSbSDYk0k2",
+   "label": "Alice (en/女性・明瞭な説明役)",
+   "model": "eleven_multilingual_v2"
+  },
+  "zh-jill": {
+   "engine": "eleven",
+   "ref": "V3z1DARAbkkTVEx5lmEl",
+   "label": "Jill (zh/標準普通話・女性・落ち着き)",
+   "model": "eleven_multilingual_v2"
+  },
+  "es-anita": {
+   "engine": "eleven",
+   "ref": "SfcWQGbh3PGEmBhgQTaV",
+   "label": "Anita (es/中南米・女性・語り)",
+   "model": "eleven_multilingual_v2"
   }
  }
 }

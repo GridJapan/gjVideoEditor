@@ -51,6 +51,7 @@ python3 tools/new_project.py <新名> --from <既存名> --dur 40
 | [reference/loop-videos.md](reference/loop-videos.md) | ループ動画の作法（**ループ点の置き方が最重要**）・繋ぎ目の実測検証 |
 | [reference/defaults.md](reference/defaults.md) | 既定値（canvas/字幕/画像/ワイプ）・learn.py で人の手直しを読む |
 
+
 ## 必ず守ること
 
 - **ファクト規律**: テロップ化する数字・固有名詞・製品名は、**出典の原文**と**一次ソース**の

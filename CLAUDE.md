@@ -56,6 +56,8 @@ python3 tools/patch.py <project> --show                 # 構造をID付きで�
 python3 tools/patch.py <project> --ops '<JSON配列>'      # 差分を当てる（鉄則を検証してから保存）
 python3 tools/patch.py <project> --ops '...' --dry-run  # 差分だけ確認
 python3 tools/patch.py <project> --check                # 現状が鉄則に違反していないか検査
+python3 tools/patch.py <project> --srt                  # 字幕を out/<名>.srt へ書き出し
+python3 tools/patch.py <project> --srt-import 字幕.srt   # 外部SRTを取り込み（id=srtの新トラック）
 ```
 
 op: `set` / `shift` / `retime` / `delete` / `add` / `ripple` / `move`（別トラックへ）/ `addtrack` / `setroot`
@@ -74,7 +76,8 @@ op: `set` / `shift` / `retime` / `delete` / `add` / `ripple` / `move`（別ト�
   （schemaは飾りではなく patch.py が実際に読む）
 
 **鉄則はこのツールが強制する**ので、AIが覚えている必要はない:
-重なり禁止 / ソース長超過の禁止 / start<end / 素材の実在 / `_zorder` 必須。
+重なり禁止 / ソース長超過の禁止 / start<end / 素材の実在 / `_zorder` 必須 /
+**字幕がフォントで描けるか（豆腐□の事前検出）** / **字幕のコントラスト**。
 
 ## project.json の要点
 

@@ -16,6 +16,8 @@
   python3 tools/patch.py <project> --ops '...' --dry-run  # 差分だけ表示
   python3 tools/patch.py <project> --ops '...' --render   # 適用後にレンダリング
   python3 tools/patch.py <project> --check                # 現状が鉄則に違反していないか検査
+  python3 tools/patch.py <project> --srt                  # 字幕を out/<名前>.srt へ（YouTube用）
+  python3 tools/patch.py <project> --srt-import 字幕.srt   # 外部SRTを字幕トラックに取り込み
 
 op の種類（selectorは track: id か label、clip: index / "*" / {"match":{...}}）:
   {"op":"set",    "track":"wipe","clip":"*","set":{"x":0.05,"y":0.62}}
@@ -37,6 +39,33 @@ import _wincompat  # noqa: E402  Windows cp932 対策（副作用で標準出力
 import argparse, copy, json, os, shutil, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# 字幕の見え方の検査（豆腐化・低コントラスト）はレンダラの実装を借りる。
+# レンダラと別実装にすると「検査は通るのに書き出すと化ける」が起きるため。
+# Pillow が無い等で読めない環境では検査だけスキップする（patch自体は動かす）。
+try:
+    _sys.path.insert(0, os.path.join(ROOT, "renderer"))
+    import importlib.util as _ilu
+    _spec = _ilu.spec_from_file_location("_ve_render", os.path.join(ROOT, "renderer", "render.py"))
+    _R = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_R)
+except Exception:
+    _R = None
+
+
+def _luminance(c):
+    """WCAG の相対輝度。c は [R,G,B(,A)]。"""
+    def f(v):
+        v = v / 255.0
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    r, g, b = (list(c) + [0, 0, 0])[:3]
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+
+
+def contrast_ratio(fg, bg):
+    """WCAG のコントラスト比（1.0〜21.0）。大きいほど読みやすい。"""
+    a, b = _luminance(fg), _luminance(bg)
+    hi, lo = max(a, b), min(a, b)
+    return (hi + 0.05) / (lo + 0.05)
 
 def die(msg):
     print("❌ " + msg, file=sys.stderr); sys.exit(1)
@@ -113,6 +142,10 @@ def schema_warnings(pj):
 
     def check(obj, props, where):
         for k, v in obj.items():
+            # `_` 始まりは注釈・内部用の慣習（_doc / _zorder / _tid / _widthText …）。
+            # 人が目印として付けるメモ（_id: "topbar" 等）を typo 扱いで警告しない
+            if k.startswith("_"):
+                continue
             spec = props.get(k)
             if spec is None:
                 out.append(f"{where} 未知のキー: {k!r}（schemaに定義が無い。typoか、schemaの更新漏れ）")
@@ -135,6 +168,39 @@ def schema_warnings(pj):
         check({k: v for k, v in t.items() if k != "clips"}, tprops, f"[{lb}]")
         for c in t.get("clips", []):
             check(c, cprops, f"[{lb}]")
+    return out
+
+
+def caption_legibility_warnings(pj, track, clip):
+    """字幕が「読めない状態」で書き出されるのを、書き出す前に捕まえる。
+
+    1) 豆腐(□)化 … 指定フォントがその文字のグリフを持たない
+       （2026-08-03: 中国語字幕を日本語フォントで焼いて「饺子」が「□子」になった）
+    2) 低コントラスト … 文字色と字幕の下敷き色が近すぎて読めない
+       highlight が無い場合は下敷きが映像そのものなので判定しない（誤検出になる）
+    """
+    out = []
+    if _R is None:
+        return out
+    lb = track.get("label") or track.get("id") or "字幕"
+    text = clip.get("text") or ""
+    style = pj.get("style") or {}
+    font = clip.get("font") or style.get("font") or "Hiragino Kaku Gothic Pro"
+    head = text.replace("\n", "/")[:18]
+
+    miss = _R.missing_glyphs(font, text.replace("**", ""), bold=bool(clip.get("bold")))
+    if miss:
+        out.append(f"[{lb}] フォント '{font}' が描けない文字があります: {''.join(miss)}"
+                   f"（「{head}」）→ 書き出すと□になります。"
+                   f"簡体字なら style.font を 'Hiragino Sans GB' に")
+
+    if clip.get("highlight"):
+        fg = clip.get("textColor") or [255, 255, 255]
+        bg = clip.get("highlightColor") or (style.get("box") or {}).get("color") or [18, 28, 46]
+        ratio = contrast_ratio(fg, bg)
+        if ratio < 3.0:      # WCAG の大きい文字の基準
+            out.append(f"[{lb}] 字幕のコントラストが低すぎます（比 {ratio:.1f}:1、"
+                       f"目安 3.0以上）文字{list(fg)[:3]} / 下敷き{list(bg)[:3]}（「{head}」）")
     return out
 
 
@@ -166,11 +232,15 @@ def validate(pj, pdir):
                 errs.append(f"[{t.get('label')}] src がありません ({c.get('start')}-{c.get('end')})")
             if t["type"] == "caption" and not (c.get("text") or "").strip():
                 warns.append(f"[{t.get('label')}] 空の字幕クリップ ({c.get('start')}-{c.get('end')})")
-            # 鉄則: 映像/音声はソース長を超えて伸ばせない
-            if t["type"] in ("video", "audio") and c.get("src"):
+            if t["type"] == "caption" and (c.get("text") or "").strip():
+                warns += caption_legibility_warnings(pj, t, c)
+            # 鉄則: 映像/音声はソース長を超えて伸ばせない（loop=true の音声だけは例外＝無限リピート）
+            if t["type"] in ("video", "audio") and c.get("src") \
+               and not (t["type"] == "audio" and c.get("loop")):
                 sd = srcdur(pdir, c["src"])
                 if sd is not None:
-                    lim = c["start"] + (sd - c.get("in", 0))
+                    spd = max(0.25, min(4.0, float(c.get("speed") or 1)))
+                    lim = c["start"] + (sd - c.get("in", 0)) / spd
                     if c["end"] > lim + 0.05:
                         errs.append(f"[{t.get('label')}] {c['src']} がソース長を超えています "
                                     f"(end={c['end']:.2f} > 上限{lim:.2f}／素材{sd:.2f}s, in={c.get('in',0)})")
@@ -188,10 +258,19 @@ def deep_merge(dst, src):
         elif isinstance(v, dict) and isinstance(dst.get(k), dict): deep_merge(dst[k], v)
         else: dst[k] = v
 
+KNOWN_OPS = ("set", "shift", "retime", "delete", "add", "ripple", "move",
+             "addtrack", "setroot")
+
+
 def apply_ops(pj, pdir, ops):
     log = []
     for o in ops:
         op = o.get("op")
+        # 未知op・track欠落は find_track より先に検査する（素通しすると KeyError の生Tracebackになる）
+        if op not in KNOWN_OPS:
+            die(f"未知の op: {op!r}（使える op: {', '.join(KNOWN_OPS)}）")
+        if op != "setroot" and op != "addtrack" and "track" not in o:
+            die(f"op={op} には track が必要です（--show で id/label を確認）")
         if op == "setroot":
             # トップレベルキーの編集経路（style/audio/canvas/meta/cuts等）。tracksはトラックopで扱う
             key = o.get("key")
@@ -275,6 +354,102 @@ def show(pj, pdir):
             print(f'    ({j}) {c.get("start",0):6.2f} - {c.get("end",0):6.2f}{extra}')
     print(f'\n全長: {max((x.get("end",0) for t in pj["tracks"] for x in t["clips"]), default=0):.2f}s')
 
+def export_srt(pj, pdir, track_sel=None):
+    """字幕トラックを .srt へ書き出す（YouTube等への字幕アップロード用）。
+    既定は id="cap" のトラック。無ければ最初の caption トラック。--srt-track で指定可。"""
+    tr = None
+    if track_sel:
+        tr = find_track(pj, track_sel)
+        if tr.get("type") != "caption":
+            die(f"--srt-track {track_sel!r} は caption トラックではありません（type={tr.get('type')}）")
+    else:
+        caps = [t for t in pj["tracks"] if t.get("type") == "caption"]
+        if not caps:
+            die("caption トラックがありません")
+        tr = next((t for t in caps if t.get("id") == "cap"), caps[0])
+
+    def ts(sec):
+        ms = int(round(max(0.0, float(sec)) * 1000))
+        h, ms = divmod(ms, 3600000); m, ms = divmod(ms, 60000); s, ms = divmod(ms, 1000)
+        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+    lines, n = [], 0
+    for c in sorted(tr["clips"], key=lambda c: c.get("start", 0)):
+        text = (c.get("text") or "").replace("**", "").strip()
+        if not text:
+            continue
+        n += 1
+        lines += [str(n), f'{ts(c["start"])} --> {ts(c["end"])}', text, ""]
+    if not n:
+        die(f"[{tr.get('label') or tr.get('id')}] に書き出せる字幕がありません")
+    out_dir = os.path.join(pdir, "out")
+    os.makedirs(out_dir, exist_ok=True)
+    title = (pj.get("meta") or {}).get("title") or os.path.basename(os.path.abspath(pdir))
+    fp = os.path.join(out_dir, os.path.basename(title) + ".srt")
+    tmp = fp + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    os.replace(tmp, fp)
+    print(f"✅ {n}件 → {fp}")
+
+
+def import_srt(pj, pdir, fp_json, srt_path, track_sel=None):
+    """外部の .srt を字幕トラックとして取り込む。
+
+    既定は id="srt" のトラックを**新規作成**（既存の字幕を壊さないため）。
+    同名トラックが既にあれば中身を置き換える。--srt-track で既存トラックを指定した場合も置き換え。
+    重なった時間は次の字幕の開始で切り詰める（1トラック内の重なり禁止の鉄則に合わせる）。"""
+    import re as _re
+    if not os.path.isfile(srt_path):
+        die(f".srt が見つかりません: {srt_path}")
+    raw = open(srt_path, encoding="utf-8-sig").read().replace("\r\n", "\n")
+
+    def sec(ts):
+        m = _re.match(r"(\d+):(\d+):(\d+)[,.](\d+)", ts.strip())
+        return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + int(m.group(3)) + int(m.group(4)) / 1000
+
+    clips = []
+    for block in _re.split(r"\n\s*\n", raw.strip()):
+        lines = [l for l in block.split("\n") if l.strip()]
+        if not lines:
+            continue
+        if _re.fullmatch(r"\d+", lines[0].strip()):
+            lines = lines[1:]                      # 通し番号行を捨てる
+        if not lines or "-->" not in lines[0]:
+            continue
+        a, b = lines[0].split("-->")
+        text = "\n".join(lines[1:]).strip()
+        if text:
+            clips.append({"start": round(sec(a), 3), "end": round(sec(b), 3), "text": text})
+    if not clips:
+        die(f"{os.path.basename(srt_path)} から字幕を読み取れませんでした（SRT形式か確認）")
+    clips.sort(key=lambda c: c["start"])
+    for i in range(len(clips) - 1):                # 鉄則: 重なりは次の開始で切り詰める
+        if clips[i]["end"] > clips[i + 1]["start"]:
+            clips[i]["end"] = clips[i + 1]["start"]
+    clips = [c for c in clips if c["end"] > c["start"]]
+
+    if track_sel:
+        tr = find_track(pj, track_sel)
+        if tr.get("type") != "caption":
+            die(f"--srt-track {track_sel!r} は caption トラックではありません")
+        tr["clips"] = clips
+    else:
+        tr = next((t for t in pj["tracks"] if t.get("id") == "srt"), None)
+        if tr is None:
+            tr = {"id": "srt", "type": "caption", "label": "字幕(SRT)", "clips": clips}
+            pj["tracks"].insert(0, tr)             # 先頭＝最前面
+        else:
+            tr["clips"] = clips
+    errs, warns = validate(pj, pdir)
+    for w in warns:
+        print("⚠️  " + w)
+    if errs:
+        die("取り込み結果が鉄則に違反:\n  " + "\n  ".join(errs))
+    dump_project(pj, fp_json)
+    print(f"✅ {len(clips)}件を [{tr.get('label') or tr.get('id')}] へ取り込みました")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("project")
@@ -284,11 +459,18 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--render", action="store_true")
     ap.add_argument("--strict", action="store_true", help="warning（素材未配置等）も違反として拒否する")
+    ap.add_argument("--srt", action="store_true", help="字幕トラックを out/<名前>.srt へ書き出す")
+    ap.add_argument("--srt-import", metavar="FILE", help=".srt を字幕トラックとして取り込む")
+    ap.add_argument("--srt-track", help="--srt/--srt-import の対象トラック（id か label）")
     a = ap.parse_args()
 
     pdir = a.project if os.path.isdir(a.project) else os.path.join(ROOT, "projects", a.project)
     pj, fp = load(pdir)
 
+    if a.srt_import:
+        import_srt(pj, pdir, fp, a.srt_import, a.srt_track); return
+    if a.srt or a.srt_track:
+        export_srt(pj, pdir, a.srt_track); return
     if a.show: show(pj, pdir); return
     if a.check:
         errs, warns = validate(pj, pdir)

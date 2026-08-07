@@ -12,6 +12,12 @@
 
     print(_deps.report())                  # 一覧（診断用）
 """
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+# ⚠️ 自分で _wincompat を読む。呼び出し側の import 順に依存しないため。
+#    順序が逆だと「依存が無い」案内そのものが cp932 の UnicodeEncodeError で消える
+#    ＝このファイルの存在意義が消える（2026-08-07 gen_chat.py が実際に逆順だった）
+import _wincompat  # noqa: E402,F401
 import os, shutil, subprocess, sys
 
 IS_WIN = sys.platform.startswith("win")
@@ -46,6 +52,42 @@ def _how(spec):
     return spec.get("all") or spec.get(_os_key()) or list(spec.values())[0]
 
 
+def pyenv_pythons():
+    """pyenv に入っている python を新しい順に列挙する。
+    バージョンを決め打ちしない（作者の 3.11.9 を書くと他の人の環境で外れる）。"""
+    base = os.path.join(os.environ.get("PYENV_ROOT") or os.path.expanduser("~/.pyenv"),
+                        "versions")
+    if not os.path.isdir(base):
+        return []
+
+    def vkey(name):     # 文字列順だと 3.9.1 が 3.11.9 より新しい扱いになるため数値で比べる
+        return tuple(int(x) if x.isdigit() else -1 for x in name.split("."))
+    try:
+        vers = sorted((d for d in os.listdir(base)
+                       if os.path.isdir(os.path.join(base, d))), key=vkey, reverse=True)
+    except OSError:
+        return []
+    return [os.path.join(base, v, "bin", "python3") for v in vers]
+
+
+def python_with(module):
+    """module を import できる Python を返す（無ければ None）。
+    ①この実行Python ②PATH上のpython3/python ③pyenv配下（新しい順）。
+
+    ⚠️ **`sys.executable` だけを見ないこと。** pyenv等でツールを動かすPythonと
+    パッケージの入ったPythonが食い違うのは普通にある。2026-08-07、edge-tts が
+    別バージョンに入っている環境で `make_video.py --voice` が「入っていません」と
+    拒否した一方、`gen_voice.py` は同じ環境で**実際に生成できた**
+    （gen_voice 側だけが探索していた）＝案内どおりの導線が塞がれていた。"""
+    for c in [sys.executable, shutil.which("python3"), shutil.which("python"),
+              *pyenv_pythons()]:
+        if not c or not os.path.exists(c):
+            continue
+        if subprocess.run([c, "-c", f"import {module}"], capture_output=True).returncode == 0:
+            return c
+    return None
+
+
 def missing(*names):
     """入っていないものだけ返す。"""
     out = []
@@ -54,11 +96,8 @@ def missing(*names):
         if kind == "cmd":
             if not shutil.which(probe):
                 out.append(n)
-        else:
-            r = subprocess.run([sys.executable, "-c", f"import {probe}"],
-                               capture_output=True)
-            if r.returncode != 0:
-                out.append(n)
+        elif python_with(probe) is None:
+            out.append(n)
     return out
 
 

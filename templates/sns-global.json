@@ -1,0 +1,386 @@
+{
+  "_doc": [
+    "海外向け多言語ショートの型。sns-explain との違い:",
+    "  1. 国内向けの帯バナー（LINE QR等）もロゴも持たない — 海外の視聴者に国内ブランドを出さないため",
+    "     （2026-08-01 MTG:GW: ブランドは『Japan Food』を仮称にこれからロゴを作る段階。ロゴは載せない）",
+    "  2. 写真を全画面で見せる（img_w=1.0）— 料理・風景が主役。1.6倍だと被写体が切れる",
+    "  3. 字幕は横幅を広くとる（w=0.86）— 欧文は同じ情報量で日本語の約2倍の字数になる",
+    "  4. 字幕は現地語がメイン。日本語は caption_ja / text_ja に書くと小さく下段に出る（社内確認用の副字幕）",
+    "簡体字を使うときは style.font を 'Hiragino Sans GB' にすること（日本語フォントでは豆腐化する）"
+  ],
+  "canvas": {
+    "w": 1080,
+    "h": 1920,
+    "bg": "#141b26"
+  },
+  "style": {
+    "font": "Hiragino Kaku Gothic Pro",
+    "fontsize": 54,
+    "marginBottom": 120,
+    "box": {
+      "color": [
+        18,
+        28,
+        46,
+        235
+      ],
+      "radius": 8,
+      "pad": 22
+    }
+  },
+  "colors": {
+    "navy": [
+      18,
+      28,
+      46
+    ],
+    "gold": [
+      214,
+      173,
+      92
+    ]
+  },
+  "gap": 0.32,
+  "parts": {
+    "chip": {
+      "x": 0.06,
+      "y": 0.045,
+      "w": 0.5,
+      "h": 0.032,
+      "fontsize": 30,
+      "bold": true,
+      "align": "left",
+      "valign": "middle",
+      "textColor": [
+        214,
+        173,
+        92
+      ],
+      "highlight": false,
+      "shadow": true
+    },
+    "source": {
+      "x": 0.06,
+      "y": 0.93,
+      "w": 0.88,
+      "h": 0.03,
+      "fontsize": 22,
+      "bold": false,
+      "align": "left",
+      "valign": "middle",
+      "textColor": [
+        220,
+        226,
+        236
+      ],
+      "highlight": true,
+      "highlightColor": [
+        18,
+        28,
+        46,
+        180
+      ],
+      "shadow": false
+    },
+    "caption": {
+      "x": 0.07,
+      "w": 0.86,
+      "h": 0.14,
+      "fontsize": 56,
+      "bold": true,
+      "valign": "middle",
+      "textColor": [
+        255,
+        255,
+        255
+      ],
+      "highlight": true,
+      "highlightColor": [
+        18,
+        28,
+        46,
+        235
+      ],
+      "shadow": false
+    },
+    "hook": {
+      "x": 0.07,
+      "y": 0.38,
+      "w": 0.86,
+      "h": 0.22,
+      "fontsize": 64,
+      "bold": true,
+      "align": "center",
+      "valign": "middle",
+      "textColor": [
+        255,
+        255,
+        255
+      ],
+      "highlight": true,
+      "highlightColor": [
+        18,
+        28,
+        46,
+        245
+      ],
+      "shadow": false
+    },
+    "outro": {
+      "x": 0.07,
+      "y": 0.38,
+      "w": 0.86,
+      "h": 0.24,
+      "fontsize": 46,
+      "bold": true,
+      "align": "center",
+      "valign": "middle",
+      "textColor": [
+        255,
+        255,
+        255
+      ],
+      "highlight": true,
+      "highlightColor": [
+        18,
+        28,
+        46,
+        245
+      ],
+      "shadow": false
+    },
+    "caption_ja": {
+      "x": 0.07,
+      "w": 0.86,
+      "h": 0.052,
+      "fontsize": 30,
+      "bold": false,
+      "align": "center",
+      "valign": "middle",
+      "textColor": [
+        212,
+        219,
+        230
+      ],
+      "highlight": true,
+      "highlightColor": [
+        10,
+        16,
+        28,
+        175
+      ],
+      "shadow": false
+    },
+    "hook_ja": {
+      "x": 0.07,
+      "w": 0.86,
+      "h": 0.055,
+      "fontsize": 32,
+      "bold": false,
+      "align": "center",
+      "valign": "middle",
+      "textColor": [
+        212,
+        219,
+        230
+      ],
+      "highlight": true,
+      "highlightColor": [
+        10,
+        16,
+        28,
+        175
+      ],
+      "shadow": false,
+      "y": 0.545
+    },
+    "outro_ja": {
+      "x": 0.07,
+      "w": 0.86,
+      "h": 0.052,
+      "fontsize": 30,
+      "bold": false,
+      "align": "center",
+      "valign": "middle",
+      "textColor": [
+        212,
+        219,
+        230
+      ],
+      "highlight": true,
+      "highlightColor": [
+        10,
+        16,
+        28,
+        175
+      ],
+      "shadow": false,
+      "y": 0.575
+    }
+  },
+  "_layout_doc": [
+    "写真は全画面固定（img_y=0 / img_w=1.0）。変えるのは字幕の高さだけ。",
+    "被写体は中央〜上寄りに来るので、字幕は下1/3に置く（low）を既定にしている。"
+  ],
+  "layouts": {
+    "boxed": {
+      "img_y": 0,
+      "img_w": 1.0,
+      "cap_y": 0.7,
+      "align": "center",
+      "fs": 56,
+      "h": 0.16,
+      "x": 0.07,
+      "w": 0.86,
+      "anim": "pop",
+      "_use": "hook/outro の背景に使われる固定キー（build_explain が直接参照する）。low と同じ",
+      "sub_dy": 0.125
+    },
+    "low": {
+      "img_y": 0,
+      "img_w": 1.0,
+      "cap_y": 0.7,
+      "align": "center",
+      "fs": 56,
+      "h": 0.16,
+      "x": 0.07,
+      "w": 0.86,
+      "anim": "pop",
+      "_use": "既定。写真を邪魔せず下1/3に置く",
+      "sub_dy": 0.125
+    },
+    "mid": {
+      "img_y": 0,
+      "img_w": 1.0,
+      "cap_y": 0.56,
+      "align": "center",
+      "fs": 58,
+      "h": 0.16,
+      "x": 0.07,
+      "w": 0.86,
+      "anim": "pop",
+      "_use": "被写体が下half にあるとき（丼を上から撮った写真等）",
+      "sub_dy": 0.125
+    },
+    "high": {
+      "img_y": 0,
+      "img_w": 1.0,
+      "cap_y": 0.2,
+      "align": "center",
+      "fs": 56,
+      "h": 0.16,
+      "x": 0.07,
+      "w": 0.86,
+      "anim": "pop",
+      "_use": "被写体が中央〜下にあるとき。字幕を上に逃がす",
+      "sub_dy": 0.125
+    }
+  },
+  "auto_layout": {
+    "short": "low",
+    "long": "low",
+    "threshold": 12
+  },
+  "sfx": {
+    "_doc": "音量は控えめ。同一トラックで重ねない（検査に弾かれ音も食い合う）",
+    "hook": {
+      "name": "text-impact",
+      "gain": 0.22
+    },
+    "scene": {
+      "names": [
+        "sceneswitch",
+        "whoosh"
+      ],
+      "gain": 0.14
+    },
+    "number": {
+      "name": "kira",
+      "gain": 0.15
+    },
+    "end": {
+      "name": "decision",
+      "gain": 0.2
+    }
+  },
+  "motion": {
+    "zoom": 1.04,
+    "zoom_last": 1.1
+  },
+  "tracks": [
+    {
+      "id": "title2",
+      "type": "caption",
+      "label": "話数チップ",
+      "role": "chip"
+    },
+    {
+      "id": "src",
+      "type": "caption",
+      "label": "出典",
+      "role": "source"
+    },
+    {
+      "id": "card",
+      "type": "caption",
+      "label": "カード",
+      "role": "cards"
+    },
+    {
+      "id": "cap",
+      "type": "caption",
+      "label": "字幕",
+      "role": "captions"
+    },
+    {
+      "id": "capja",
+      "type": "caption",
+      "label": "字幕(日本語・副)",
+      "role": "subcaptions"
+    },
+    {
+      "id": "img",
+      "type": "image",
+      "label": "紙芝居",
+      "role": "images"
+    },
+    {
+      "id": "bgimg",
+      "type": "image",
+      "label": "背景",
+      "role": "background"
+    },
+    {
+      "id": "narr",
+      "type": "audio",
+      "label": "ナレーション",
+      "role": "narration"
+    },
+    {
+      "id": "sfx",
+      "type": "audio",
+      "label": "効果音",
+      "role": "sfx"
+    },
+    {
+      "id": "bgm",
+      "type": "audio",
+      "label": "BGM",
+      "role": "bgm"
+    }
+  ],
+  "assets": {
+    "required": [
+      "bg.png"
+    ],
+    "sfx": [
+      "whoosh.mp3",
+      "kira.mp3",
+      "text-impact.mp3",
+      "sceneswitch.mp3",
+      "decision.mp3"
+    ],
+    "bgm_default": "citypop-cassette.mp3",
+    "images": "台本の beat で指定した名前の .png"
+  }
+}
