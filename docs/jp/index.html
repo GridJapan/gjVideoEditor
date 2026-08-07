@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>video-editor — 自然言語で作り、UIで仕上げる動画づくり</title>
-<meta name="description" content="AIに日本語で頼んで作り、タイムラインUIで仕上げる。Python標準ライブラリ＋Pillow＋ffmpegだけで動く、依存ゼロの動画編集ツール。MITライセンス。">
-<meta property="og:title" content="video-editor">
-<meta property="og:description" content="自然言語で作り、UIで仕上げる動画づくり。依存ゼロ・MITライセンス。">
+<title>GJ VIDEO EDITOR — AIで作り、必要なところだけ直せる動画ツール</title>
+<meta name="description" content="日本語で頼めばAIが動画を1本組み上げます。気になるところだけタイムラインUIで直せば、言い直すより早い。Python標準ライブラリ＋Pillow＋ffmpegだけで動く、依存ゼロ・MITライセンス。">
+<meta property="og:title" content="GJ VIDEO EDITOR">
+<meta property="og:description" content="AIで作り、必要なところだけ直せる。依存ゼロ・MITライセンス。">
 <meta property="og:image" content="../assets/editor.png">
 <meta property="og:type" content="website">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="alternate" hreflang="ja" href="https://gridjapan.github.io/gjVideoEditor/jp/">
 <link rel="alternate" hreflang="en" href="https://gridjapan.github.io/gjVideoEditor/en/">
 <style>
@@ -29,7 +30,9 @@
   header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.88);
     backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}
   .hbar{display:flex;align-items:center;gap:20px;height:60px}
-  .logo{font-weight:700;color:var(--ink);font-size:15px;letter-spacing:.02em}
+  .logo{font-weight:700;color:var(--ink);font-size:15px;letter-spacing:.02em;
+    display:inline-flex;align-items:center;gap:8px}
+  .logo img{display:block;border-radius:4px}
   .hbar nav{margin-left:auto;display:flex;gap:18px;align-items:center;font-size:13px}
   .hbar nav a{color:var(--body)}
   .lang{color:var(--muted);font-size:12px}
@@ -108,7 +111,7 @@
 
 <header>
   <div class="wrap hbar">
-    <span class="logo">🎬 GJ VIDEO EDITOR</span>
+    <span class="logo"><img src="../assets/mark.png" alt="" width="22" height="22">GJ VIDEO EDITOR</span>
     <nav>
       <a href="#how">仕組み</a>
       <a href="#features">できること</a>
@@ -124,10 +127,11 @@
 
   <div class="hero">
     <p class="badge">開発中 · v0.16.0</p>
-    <h1>AIで作った動画を、<em>そのままUIで編集できる。</em></h1>
+    <h1>AIで作り、<em>必要なところだけ直せる。</em></h1>
     <p class="lede">
-      「この動画を作って」と頼んで出てきたものを、タイムラインで直接いじれます。
-      直したあとにまた言葉で指示しても、UIでの手直しは消えません。
+      作りたい動画を日本語で伝えれば、台本・音声・字幕・書き出しまでAIが進めます。
+      そのまま完成でも構いません。気になるところがあれば、
+      <strong>言い直すより早く、タイムラインで直せます。</strong>
     </p>
     <p class="sub">Python標準ライブラリ ＋ Pillow ＋ ffmpeg だけ。クラウドもAPIキーも不要です。</p>
     <img class="shot" src="../assets/editor.png" alt="video-editor の編集画面。上にプレビュー、下にマルチトラックのタイムライン">
@@ -149,17 +153,17 @@
 
     <div class="cols">
       <div class="card">
-        <h3>AIが書く（8割）</h3>
-        <p>差分パッチとして当たります。重なり・素材の欠落・尺の超過は<strong>保存する前に弾かれる</strong>ので、壊れたものができません。</p>
+        <h3>頼めば、1本できる</h3>
+        <p>AIの変更は差分パッチとして当たります。クリップの重なり・素材の欠落・尺の超過は<strong>保存する前に弾かれる</strong>ので、壊れたものができません。</p>
       </div>
       <div class="card">
-        <h3>人が直す（2割）</h3>
-        <p>ブラウザのタイムラインで直接動かします。他所からの更新とぶつかれば検知して止まります。</p>
+        <h3>直したいときは、そのまま触れる</h3>
+        <p>「この字幕を0.5秒ずらして、少し右へ」を言葉で伝えるより、掴んで動かすほうが早い場面があります。UIには同じデータがそのまま映っています。</p>
       </div>
     </div>
 
     <p class="note" style="margin-top:18px">
-      さらに、人が直した内容をAIが読み返せます。同じ直しが繰り返されているなら、それはAIの既定値が間違っているということです。
+      直した内容はAIが読み返せます。同じ直しが繰り返されているなら、それはAIの既定値が間違っているということです。
     </p>
   </section>
 
@@ -171,11 +175,35 @@
       <tr><th>タイムライン編集</th><td>映像・字幕・画像・音声のマルチトラック。ドラッグ&ドロップ、分割、undo/redo、吸着、ズーム</td></tr>
       <tr><th>非破壊編集</th><td>長い元動画を1本置いたまま、参照位置だけをずらして使います。切り出しファイルを作らないので、<strong>端をいつでも伸ばせます</strong></td></tr>
       <tr><th>字幕</th><td>枠のドラッグ・リサイズ・フォント・360°回転・<strong>縦書き</strong>・部分強調・画面端への吸着</td></tr>
+      <tr><th>字幕アニメーション</th><td><strong>数字のカウントアップ</strong>・1文字ずつの文字送り・画面外からのスライドイン・スタンプ登場。数値の差を見せる<strong>比較バー</strong>も付けられます</td></tr>
+      <tr><th>画像の動き</th><td>フェードイン／アウト・不透明度・ゆっくり寄る／引く（ケンバーンズ）・上下左右へのパン</td></tr>
+      <tr><th>映像の調整</th><td>再生速度（0.25〜4倍。声の高さは保ったまま）・左右反転・トリミング・角丸</td></tr>
+      <tr><th>色調整</th><td>明るさ・コントラスト・彩度。<strong>プレビューと書き出しが同じ計算式</strong>なので、見たまま出ます</td></tr>
+      <tr><th>トランジション</th><td>フェードイン／アウト／クロスフェードをワンクリックで。重ね方はツールが自動で組みます</td></tr>
       <tr><th>ワイプ（PiP）</th><td>プレビュー上でドラッグして移動・拡大縮小。角丸を1.0にすると正円になります</td></tr>
-      <tr><th>書き出し</th><td>MP4 / WebM / GIF / MP3。画質と解像度を選べます</td></tr>
+      <tr><th>音声</th><td>音量・フェード・<strong>BGMの自動ダッキング</strong>（ナレーション中だけ沈む）・短いBGMのループ・ラウドネス正規化</td></tr>
       <tr><th>ナレーション</th><td>無料でAPIキー不要の音声合成に対応。複数の声を使い分けられます</td></tr>
+      <tr><th>マスク</th><td>モザイク・ぼかし・黒塗り。会議録画に映り込んだものを隠せます</td></tr>
+      <tr><th>多言語</th><td>文字種に合わせてフォントを自動で切り替え。<strong>フォントが描けない文字は書き出す前に検出</strong>します</td></tr>
+      <tr><th>字幕ファイル</th><td>SRTの書き出しと取り込み。他ツールで作った字幕もそのまま持ち込めます</td></tr>
+      <tr><th>書き出し</th><td>MP4 / WebM / GIF / MP3。画質・解像度に加えて<strong>秒数で範囲を指定</strong>できます（直した数秒だけの確認に）</td></tr>
       <tr><th>量産</th><td>台本を1枚書いて1コマンドで動画が1本。Pythonは書きません</td></tr>
     </table>
+
+    <h3 style="margin-top:34px">壊れたものを「成功」と言わない</h3>
+    <p>
+      書き出しは、失敗しても最後まで走ってしまうことがあります。このツールは<strong>保存と書き出しの前に検査します。</strong>
+    </p>
+    <table>
+      <tr><th>重なり・尺</th><td>同じトラックでクリップが重なっていないか。素材の長さを超えて伸ばしていないか</td></tr>
+      <tr><th>文字化け</th><td>選んだフォントで<strong>描けない文字（□になる字）を事前に検出</strong>します</td></tr>
+      <tr><th>読めるか</th><td>字幕と下敷きのコントラスト比、実際の描画幅での枠からの溢れ</td></tr>
+      <tr><th>素材の実在</th><td>足りないファイルを名前で挙げて止まります。英語のエラーは出しません</td></tr>
+    </table>
+    <p class="note">
+      検査そのものにも総当りのテストが付いています（レンダラ40項目・編集ツール32項目・サーバ31項目）。
+      判定は「例外が出なかったか」ではなく、<strong>書き出した動画の画素と音量を実測して</strong>行います。
+    </p>
 
     <h3 style="margin-top:34px">このツールで作った動画</h3>
     <p class="note">下の28秒の動画も、このツールで組み立てて書き出したものです。</p>
