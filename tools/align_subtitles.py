@@ -92,7 +92,14 @@ def main():
     wh_path = next((a for a in rest if a.endswith(".json")), None)
 
     proj_path = os.path.join(pdir, "project.json")
-    proj = json.load(open(proj_path, encoding="utf-8"))
+    if not os.path.exists(proj_path):
+        raise SystemExit(f"❌ プロジェクトが見つかりません: {args[0]}\n"
+                         f"   project.json のあるフォルダを指定してください"
+                         f"（例: projects/sample-hello）\n\n" + (__doc__ or ""))
+    try:
+        proj = json.load(open(proj_path, encoding="utf-8"))
+    except ValueError as ex:
+        raise SystemExit(f"❌ project.json が壊れています: {proj_path}\n   {ex}")
 
     segs, src2tl = build_src2tl(proj)
 

@@ -655,9 +655,19 @@ class Handler(BaseHTTPRequestHandler):
             q = opts.get("quality", "std")
             h = opts.get("height")
             save_dir = opts.get("save_dir")  # None=ダウンロードのみ / パス=そのフォルダへコピー
+            rng = opts.get("range")          # [開始秒, 終了秒] / None=全体
             if fmt not in ("mp4", "webm", "gif", "mp3") or q not in ("high", "std", "light") \
                or not (h is None or (isinstance(h, int) and 100 <= h <= 4320)):
                 self._send(400, '{"err":"bad options"}'); return
+            if rng is not None:
+                try:
+                    rng = [float(rng[0]), float(rng[1])]
+                except (TypeError, ValueError, IndexError, KeyError):
+                    rng = None
+                if rng is not None and not (0 <= rng[0] < rng[1]):
+                    self._send(400, json.dumps(
+                        {"err": "範囲が不正です（開始 < 終了 になるように指定してください）"},
+                        ensure_ascii=False)); return
             if save_dir is not None:
                 save_dir = os.path.expanduser(str(save_dir))
                 if not os.path.isdir(save_dir):
@@ -684,11 +694,15 @@ class Handler(BaseHTTPRequestHandler):
                         # （ここを取りこぼすとブラウザには「500」しか出ず原因が追えない）
                         detail = (r.stderr or "").strip() or (r.stdout or "").strip()
                         self._send(500, json.dumps({"ok": False, "err": detail[-1500:]})); return
-            if fmt == "mp4" and q == "high" and not h:
+            if fmt == "mp4" and q == "high" and not h and not rng:
                 fp = master
             else:
-                fp = os.path.join(out_dir, title + "_" + q + (f"_{h}p" if h else "") + "." + fmt)
-                cmd = ["ffmpeg", "-y", "-i", master]
+                seg = f"_{rng[0]:g}-{rng[1]:g}s" if rng else ""
+                fp = os.path.join(out_dir, title + "_" + q + (f"_{h}p" if h else "") + seg + "." + fmt)
+                # 範囲: 入力シーク(-ss)＋出力の -t。再エンコードするのでフレーム精度で切れる
+                cmd = (["ffmpeg", "-y"]
+                       + (["-ss", f"{rng[0]:.3f}"] if rng else []) + ["-i", master]
+                       + (["-t", f"{rng[1] - rng[0]:.3f}"] if rng else []))
                 # h は「短辺」解釈（縦動画で 1080 を指定しても 608x1080 に縮まないように）
                 vf = f"scale=w='if(gt(iw,ih),-2,{h})':h='if(gt(iw,ih),{h},-2)'" if h else None
                 if fmt == "mp4":

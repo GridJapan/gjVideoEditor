@@ -34,6 +34,11 @@ node_modules/
 !docs/assets/*.jpg
 !docs/assets/*.mp4
 
+# UIパーツ画像（codex生成→tools/make_ui_assets.py で最適化済みの小サイズ）は追跡する。
+# editor.html に data URI で埋め込むが、再編集の元としてここにも残す（合計~数百KB）
+!ui/assets/
+!ui/assets/*.png
+
 # 配布用サンプルだけは素材ごと追跡する（clone直後に「動くもの」を1つ持たせるため。約90KB）。
 # 素材は tools/make_sample.py が生成したもの。出所不明のファイルをここに置かないこと。
 # ⚠️ ここに他のプロジェクトを足さないこと（動画・BGMを含むと一気に肥大化する。配布は zip書き出しで行う）
@@ -46,3 +51,6 @@ projects/sample-hello/out/
 projects/sample-hello/png/
 projects/sample-hello/_wave_*.png
 projects/sample-hello/_waveform.png
+
+# 総当りQA（tests/）の作業用。中身は毎回作り直されるので追跡しない
+projects/_qa_*/

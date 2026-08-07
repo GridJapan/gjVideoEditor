@@ -19,8 +19,8 @@
 """
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import _wincompat  # noqa: E402  Windows cp932 対策（副作用で標準出力をUTF-8化）。**_deps より先に**
 import _deps       # noqa: E402  依存の確認
-import _wincompat  # noqa: E402  Windows cp932 対策（副作用で標準出力をUTF-8化）
 import json, os, sys
 from PIL import Image, ImageDraw, ImageFont
 
@@ -133,5 +133,18 @@ def build(outdir, script):
 
 
 if __name__ == "__main__":
-    with open(sys.argv[2], encoding="utf-8") as fh:
-        build(sys.argv[1], json.load(fh))
+    if len(sys.argv) < 3:
+        print("❌ 引数が足りません。\n"
+              "   使い方: python3 tools/gen_chat.py <出力ディレクトリ> <台本JSON>\n"
+              "   例:     python3 tools/gen_chat.py projects/my-video-01 script.json",
+              file=sys.stderr)
+        sys.exit(1)
+    outdir, spec = sys.argv[1], sys.argv[2]
+    if not os.path.exists(spec):
+        print(f"❌ 台本JSONが見つかりません: {spec}", file=sys.stderr); sys.exit(1)
+    try:
+        with open(spec, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except ValueError as ex:
+        print(f"❌ 台本JSONが壊れています: {spec}\n   {ex}", file=sys.stderr); sys.exit(1)
+    build(outdir, data)

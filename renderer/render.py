@@ -15,8 +15,8 @@ import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../tools"))
 import _wincompat  # noqa: E402  Windows cp932 対策（標準出力/stderrをUTF-8化）
 import _deps       # noqa: E402  依存の確認（無ければ入れ方を出して止まる）
-import os, re, sys, json, math, subprocess
-from PIL import Image, ImageChops, ImageDraw, ImageFont
+import os, re, sys, json, math, subprocess, unicodedata
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFont
 
 # style キーが無い project.json でも既定値で描けるようにする（KeyError死の防止）
 DEFAULT_STYLE = {"font": "Hiragino Kaku Gothic Pro", "fontsize": 56}
@@ -43,6 +43,13 @@ WIN_MINCHO = [
     "C:/Windows/Fonts/yumin.ttf",     # 游明朝
     "C:/Windows/Fonts/msmincho.ttc",  # MS 明朝
 ] + WIN_GOTHIC
+# 簡体字（中国語）用。日本語フォントは「饺・实・铺」等のグリフを持たず豆腐(□)になる
+# （2026-08-01: 中国語版の動画で「饺子咖喱」が「□子□□」と出た）。
+WIN_SC = [
+    "C:/Windows/Fonts/msyh.ttc",      # Microsoft YaHei
+    "C:/Windows/Fonts/simhei.ttf",    # SimHei
+    "C:/Windows/Fonts/simsun.ttc",    # SimSun（最後の砦）
+]
 
 FONT_CANDIDATES = {
     "Hiragino Kaku Gothic Pro": [
@@ -55,6 +62,10 @@ FONT_CANDIDATES = {
     "Hiragino Maru Gothic ProN": [
         "/System/Library/Fonts/ヒラギノ丸ゴ ProN W4.ttc",
     ] + WIN_GOTHIC,
+    # 簡体字を含む字幕はこれを使う（日本語のかな・漢字も持つので混在行も出せる）
+    "Hiragino Sans GB": [
+        "/System/Library/Fonts/Hiragino Sans GB.ttc",
+    ] + WIN_SC,
 }
 FONT_BOLD = {
     "Hiragino Kaku Gothic Pro": [
@@ -64,6 +75,9 @@ FONT_BOLD = {
     "Hiragino Maru Gothic ProN": [
         "/System/Library/Fonts/ヒラギノ丸ゴ ProN W4.ttc",
     ] + WIN_GOTHIC_BOLD,
+    "Hiragino Sans GB": [
+        "/System/Library/Fonts/Hiragino Sans GB.ttc#2",   # W6（同ttc内のフェイス2）
+    ] + WIN_SC,
 }
 FONT_FALLBACK = [
     "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc",
@@ -108,7 +122,7 @@ def safe_title(v, pdir):
 def resolve_font(name, bold=False):
     cands = (FONT_BOLD.get(name, []) if bold else []) + FONT_CANDIDATES.get(name, []) + FONT_FALLBACK
     for p in cands:
-        if os.path.exists(p):
+        if os.path.exists(p.partition("#")[0]):   # "#N" は .ttc のフェイス番号（get_fontが解釈する）
             return p
     raise SystemExit("日本語フォントが見つかりません（Windowsは游ゴシック/メイリオ、macOSはヒラギノを探します）")
 
@@ -201,12 +215,53 @@ def get_images(proj):
 
 
 def get_audios(proj):
-    """効果音/BGMトラック（type=audio）のクリップ。"""
+    """効果音/BGMトラック（type=audio）のクリップ。
+    ダッキングの相手探しに使うため、所属トラックの id/label を `_tid`/`_tlabel` として持たせる
+    （内部専用キー。書き出し処理は project.json を保存しないので混入しない）。"""
     auds = []
     for tr in proj["tracks"]:
         if tr["type"] == "audio":
+            for c in tr["clips"]:
+                c["_tid"] = tr.get("id") or ""
+                c["_tlabel"] = tr.get("label") or ""
             auds.extend(tr["clips"])
     return auds
+
+
+def duck_expr(clip, all_audios, base_gain):
+    """BGMダッキング: 相手（既定=ナレーション）の区間だけ音量を下げる volume 式を作る。
+
+    clip["duck"] = true か {"to":0.25,"fade":0.35,"against":"narr"}。
+    式は各区間 g_i(t) = to + (1-to)*clip(距離/fade, 0, 1) の min 合成。
+    区間の端で fade 秒かけて滑らかに沈み・戻る。時刻はクリップ内(0起点)。
+    相手が見つからないときは None（＝通常の volume にフォールバック）。"""
+    d = clip.get("duck")
+    if not d:
+        return None
+    conf = d if isinstance(d, dict) else {}
+    to = max(0.0, min(1.0, float(conf.get("to", 0.25))))
+    fade = max(0.05, float(conf.get("fade", 0.35)))
+    against = str(conf.get("against", "")).strip()
+
+    def is_target(c2):
+        if c2 is clip:
+            return False
+        tid, tlab = c2.get("_tid", ""), c2.get("_tlabel", "")
+        if against:
+            return against in (tid, tlab) or against in tlab
+        return ("narr" in tid.lower()) or ("ナレ" in tlab)
+
+    s0 = float(clip["start"])
+    ivs = sorted((float(c2["start"]) - s0, float(c2["end"]) - s0)
+                 for c2 in all_audios if is_target(c2))
+    if not ivs:
+        return None
+    terms = [f"({to:.3f}+{1 - to:.3f}*clip((max({a:.3f}-t,t-{b:.3f}))/{fade:.3f},0,1))"
+             for a, b in ivs]
+    expr = terms[0]
+    for t_ in terms[1:]:
+        expr = f"min({expr},{t_})"
+    return f"volume='{base_gain:.4f}*{expr}':eval=frame"
 
 
 # ---- cuts ----
@@ -286,8 +341,76 @@ _FONT_CACHE = {}
 def get_font(name, size, bold=False):
     key = (name, size, bold)
     if key not in _FONT_CACHE:
-        _FONT_CACHE[key] = ImageFont.truetype(resolve_font(name, bold), size)
+        # 候補は "パス" か "パス#N"（.ttc内のフェイス番号）。
+        # 太さが別ファイルではなく同一ttcの別フェイスに入っているフォントがある
+        # （Hiragino Sans GB は W3=0 / W6=2。index を指定しないと常に細字になる）
+        path, _, idx = resolve_font(name, bold).partition("#")
+        _FONT_CACHE[key] = ImageFont.truetype(path, size, index=int(idx or 0))
     return _FONT_CACHE[key]
+
+
+_CODEC = None
+
+def pick_video_codec():
+    """実在するH.264エンコーダを選ぶ。`libx264` を決め打ちしない。
+
+    ffmpeg は配布ビルドによって libx264 を含まないことがある（GPL回避ビルド等）。
+    決め打ちだと配布先で「書き出しだけ落ちる」になり、原因が分かりにくい。
+    `VE_VIDEO_CODEC` で明示指定もできる。"""
+    global _CODEC
+    if _CODEC:
+        return _CODEC
+    want = os.environ.get("VE_VIDEO_CODEC", "").strip()
+    cands = ([want] if want else []) + ["libx264", "libopenh264", "h264_videotoolbox", "mpeg4"]
+    try:
+        out = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"],
+                             capture_output=True, text=True, timeout=15).stdout
+    except Exception:
+        _CODEC = "libx264"
+        return _CODEC
+    for c in cands:
+        if re.search(rf"^\s*\S+\s+{re.escape(c)}\s", out, re.M):
+            if c != "libx264":
+                print(f"ℹ️ libx264 が無いため {c} で書き出します", file=sys.stderr)
+            _CODEC = c
+            return _CODEC
+    _CODEC = "libx264"
+    return _CODEC
+
+
+_GLYPH_CACHE = {}
+
+def missing_glyphs(name, text, bold=False):
+    """フォントが text の文字を描けるか調べ、描けない文字を返す（空なら全部描ける）。
+
+    **未定義コードポイント(U+10FFFF)を描いた結果**と各文字を突き合わせる。
+    豆腐(□)は「グリフが無い時に出る代替字形」なので、これと一致する＝そのフォントは
+    その文字を持たない、と判定できる。フォント名やOSに依存しない。
+
+    2026-08-03: 中国語字幕を日本語フォントで焼き、「饺子咖喱」が「□子□□」になって
+    書き出し直しになった。書き出し前に気づくための検査。
+    記号・空白は対象外（フォントが持たないのが普通で、警告するとノイズになる）。
+    """
+    try:
+        font = get_font(name, 30, bold)
+        blank = font.getmask("\U0010ffff")
+        blank_sig = (blank.size, blank.getbbox(), bytes(blank))
+        miss = []
+        for ch in dict.fromkeys(str(text or "")):
+            if unicodedata.category(ch)[0] not in ("L", "N"):
+                continue
+            key = (name, bold, ch)
+            if key not in _GLYPH_CACHE:
+                m = font.getmask(ch)
+                _GLYPH_CACHE[key] = (m.getbbox() is None
+                                     or (m.size, m.getbbox(), bytes(m)) == blank_sig)
+            if _GLYPH_CACHE[key]:
+                miss.append(ch)
+        return miss
+    except Exception:
+        # 検査できない環境（フォント未解決など）では素通しする。
+        # 検査の失敗で書き出しを止めないこと。
+        return []
 
 
 def _render_caption_vertical(proj, cap, W, H):
@@ -438,7 +561,12 @@ def render_caption_image(proj, cap, W, H):
             cur_pos += len(l)
         lines.extend(wl)
     lh = int(fs_i * 1.36)
-    block_h = lh * len(lines)
+    # 比較バー: 数字だけを読ませるより、長さで見せたほうが差が一撃で伝わる。
+    # 座布団の中に収めるので、その分の高さを block_h に足しておく。
+    bar_cfg = cap.get("bar") or None
+    bar_h = max(6, int(fs_i * float((bar_cfg or {}).get("height", 0.20)))) if bar_cfg else 0
+    bar_gap = int(fs_i * 0.16) if bar_cfg else 0
+    block_h = lh * len(lines) + bar_h + bar_gap
     valign = cap.get("valign", "bottom")
     if legacy:
         top = (H - margin_bottom) - block_h
@@ -450,6 +578,14 @@ def render_caption_image(proj, cap, W, H):
         top = by + bh - block_h
     align = cap.get("align", "center")
     ww = max(scratch.textlength(l, font=font_i) for l in lines)
+    # countup 等で毎フレーム文字列が変わるとき、座布団の幅が伸縮して箱がガタつく。
+    # `_widthText`（＝最終形の文字列）が渡っていれば、そちらで幅を測って固定する。
+    if cap.get("_widthText"):
+        wbody = parse_emphasis(cap["_widthText"])[0]
+        wlines = []
+        for para in wbody.split("\n"):
+            wlines.extend(wrap(scratch, para, font_i, bw - pad * 2) or [""])
+        ww = max(ww, max(scratch.textlength(l, font=font_i) for l in wlines))
     rx0 = bx if align == "left" else (bx + bw - ww if align == "right" else bx + (bw - ww) / 2)
 
     # ハイライト（座布団）: 既定ON。色はhighlightColor→style.box.color
@@ -462,6 +598,18 @@ def render_caption_image(proj, cap, W, H):
         else:
             d.rounded_rectangle([rx0 - pad, top - pad, rx0 + ww + pad, top + block_h + pad],
                                 radius=box["radius"], fill=hi)
+
+    # 比較バー本体（座布団の内側・テキストの下）。ratio=0〜1 が満幅に対する長さ。
+    # countup と一緒に使うと、数字が上がりながら棒も伸びる。
+    if bar_cfg:
+        y0 = top + lh * len(lines) + bar_gap
+        r = max(0.0, min(1.0, float(bar_cfg.get("ratio", 0))))
+        rad = bar_h // 2
+        d.rounded_rectangle([rx0, y0, rx0 + ww, y0 + bar_h], radius=rad,
+                            fill=_col(bar_cfg.get("trackColor") or [255, 255, 255, 46], 4))
+        if r > 0.001:
+            d.rounded_rectangle([rx0, y0, rx0 + max(bar_h, ww * r), y0 + bar_h], radius=rad,
+                                fill=_col(bar_cfg.get("color") or [214, 173, 92, 255], 4))
 
     # テキストは別レイヤーに描いてイタリック時にシアー変換
     tl = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -532,6 +680,21 @@ def video_dims(path):
     return _vdims_cache[path]
 
 
+_has_aud_cache = {}
+
+
+def has_audio_stream(path):
+    """映像ソースが音声ストリームを持つか（ffprobe・キャッシュ）。
+    無音の画面収録などを [N:a] で参照すると ffmpeg が
+    『matches no streams / Error binding filtergraph』で落ちるため、事前に見る。"""
+    if path not in _has_aud_cache:
+        r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a",
+                            "-show_entries", "stream=index", "-of", "csv=p=0", path],
+                           capture_output=True, text=True)
+        _has_aud_cache[path] = bool((r.stdout or "").strip())
+    return _has_aud_cache[path]
+
+
 def rounded_mask(w, h, radius):
     """角丸マスク(Lモード, 白=表示)。radius 0〜1。1.0で中央の正円（直径=短辺）。
     2倍で描いて縮小（エッジのアンチエイリアス）。"""
@@ -548,8 +711,36 @@ def rounded_mask(w, h, radius):
     return m.resize((w, h), Image.LANCZOS)
 
 
-def prep_image(src_path, out_path, radius=0.0, rotate=0.0):
-    """画像の前処理（角丸→回転）。元の透過（集中線等）を保ったまま加工する。
+def has_color_adjust(col):
+    """color 補正が実質的に指定されているか（全部1なら無指定と同じ）。"""
+    if not col:
+        return False
+    return any(abs(float(col.get(k, 1)) - 1) > 1e-3
+               for k in ("brightness", "contrast", "saturation"))
+
+
+def apply_color(im, col):
+    """色調整（明るさ・コントラスト・彩度）。**CSS filter と同じ意味**にしてある:
+    brightness=乗算 / contrast=0.5(=128)基準の伸縮 / saturation=グレースケールとのブレンド。
+    UIプレビュー（CSS filter）と書き出しを一致させるための取り決め。
+    アルファには触らない（集中線など半透明素材の透過を保つ）。"""
+    b = max(0.0, min(3.0, float(col.get("brightness", 1))))
+    k = max(0.0, min(3.0, float(col.get("contrast", 1))))
+    s = max(0.0, min(3.0, float(col.get("saturation", 1))))
+    a = im.getchannel("A")
+    rgb = im.convert("RGB")
+    if abs(s - 1) > 1e-3:
+        rgb = ImageEnhance.Color(rgb).enhance(s)
+    if abs(b - 1) > 1e-3 or abs(k - 1) > 1e-3:
+        lut = [max(0, min(255, int(round((x * b - 128) * k + 128)))) for x in range(256)]
+        rgb = rgb.point(lut * 3)
+    out = rgb.convert("RGBA")
+    out.putalpha(a)
+    return out
+
+
+def prep_image(src_path, out_path, radius=0.0, rotate=0.0, color=None, flip=False):
+    """画像の前処理（反転→色調整→角丸→回転）。元の透過（集中線等）を保ったまま加工する。
     戻り値 (元の幅, 元の高さ, 出力の幅, 出力の高さ)。
 
     ⚠️ 回転すると外接矩形が広がる（expand=True）。呼び出し側でこの比を使って
@@ -557,6 +748,10 @@ def prep_image(src_path, out_path, radius=0.0, rotate=0.0):
     with Image.open(src_path) as im:
         im = im.convert("RGBA")
         w0, h0 = im.size
+        if flip:
+            im = im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+        if has_color_adjust(color):
+            im = apply_color(im, color)
         if radius > 0:
             mask = rounded_mask(im.width, im.height, radius)
             im.putalpha(ImageChops.multiply(im.getchannel("A"), mask))
@@ -567,19 +762,109 @@ def prep_image(src_path, out_path, radius=0.0, rotate=0.0):
         return w0, h0, im.width, im.height
 
 
+_NUM_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
+# 既定でカウントするのは「金額」だけ。全数値を動かすと、順位の "#2" や "10 min" まで
+# 数え上がって意味が壊れる（2026-08-05: #1→#2 とカウントして不成立になった）。
+_MONEY_RE = re.compile(r"[$¥￥]\s?\d[\d,]*(?:\.\d+)?|\d[\d,]*(?:\.\d+)?\s?円")
+
+
+def _interp(raw, e):
+    """"22,000" や "3.30" を、比率 e の途中の値へ。桁区切りと小数桁は維持する。"""
+    if "." in raw:
+        dec = len(raw.split(".")[1])
+        cur = float(raw.replace(",", "")) * e
+        return f"{cur:,.{dec}f}" if "," in raw else f"{cur:.{dec}f}"
+    cur = int(round(int(raw.replace(",", "")) * e))
+    return f"{cur:,}" if "," in raw else str(cur)
+
+
+def countup_texts(text, n, all_numbers=False):
+    """text 内の金額を 0 → 実値 へ変化させた n 通りの文字列を返す。
+
+    イージングは ease-out（最初が速く、着地でゆっくり止まる）＝数字が「決まる」感じになる。
+    既定は金額（$139 / 22,000円 / ¥500）のみ。`countAll` を立てると全数値を動かす。
+    """
+    pat = _NUM_RE if all_numbers else _MONEY_RE
+    hits = list(pat.finditer(text))
+    if not hits:
+        return [text] * n
+    out = []
+    for k in range(n):
+        e = 1 - (1 - (k + 1) / n) ** 3
+        s = text
+        for m in reversed(hits):        # 後ろから置換（前を書き換えると位置がずれる）
+            seg = m.group()
+            nm = _NUM_RE.search(seg)
+            rep = seg[:nm.start()] + _interp(nm.group(), e) + seg[nm.end():]
+            s = s[:m.start()] + rep + s[m.end():]
+        out.append(s)
+    return out
+
+
+def typewriter_texts(text, n):
+    """text を1文字ずつ出す n 通り。**強調マーカー(`**`)は数に入れない**
+    （マーカーを途中で切ると片方だけ残って色が崩れるため、常にペアで進める）。"""
+    body, flags = parse_emphasis(text)
+    out = []
+    for k in range(n):
+        cut = max(1, int(round(len(body) * (k + 1) / n)))
+        s, on = [], False
+        for j, ch in enumerate(body[:cut]):
+            if flags[j] and not on:
+                s.append("**"); on = True
+            elif not flags[j] and on:
+                s.append("**"); on = False
+            s.append(ch)
+        if on:
+            s.append("**")
+        out.append("".join(s))
+    return out
+
+
+# 連番PNG（フレームごとに画が変わる）を要するアニメ
+SEQ_ANIMS = ("countup", "typewriter")
+
+
 def build_caption_pngs(proj, pdir, W, H, captions):
-    """書き出し用: 各字幕クリップのPNGをファイルに落としてパスを返す。"""
+    """書き出し用: 各字幕クリップのPNGをファイルに落としてパスを返す。
+
+    SEQ_ANIMS のクリップだけは **連番PNGのディレクトリ**を返す。
+    文字や数字が変わる＝画そのものが変わるので、静止画1枚では表現できない。
+    """
     png_dir = os.path.join(pdir, "png")
     os.makedirs(png_dir, exist_ok=True)
     paths = []
     for i, cap in enumerate(captions):
+        if (cap.get("anim") or "") in SEQ_ANIMS:
+            fps = int((proj.get("meta") or {}).get("fps", 30))
+            dur = min(float(cap.get("animDur", 0.9)),
+                      max(0.1, float(cap["end"]) - float(cap["start"])))
+            n = max(2, int(round(dur * fps)))
+            d = os.path.join(png_dir, f"cap_{i:03d}_seq")
+            os.makedirs(d, exist_ok=True)
+            for old in os.listdir(d):
+                if old.endswith(".png"):
+                    os.remove(os.path.join(d, old))
+            final = cap.get("text", "")
+            bar0 = cap.get("bar")
+            seq = (typewriter_texts(final, n) if cap["anim"] == "typewriter"
+                   else countup_texts(final, n, bool(cap.get("countAll"))))
+            for k, t in enumerate(seq):
+                e = 1 - (1 - (k + 1) / n) ** 3
+                f = {**cap, "text": t, "_widthText": final}
+                if bar0:      # 棒も数字と同じイージングで伸ばす
+                    f["bar"] = {**bar0, "ratio": float(bar0.get("ratio", 0)) * e}
+                # _widthText で座布団の幅を最終形に固定する（毎フレーム伸縮するとガタつく）
+                render_caption_image(proj, f, W, H).save(os.path.join(d, f"{k:04d}.png"))
+            paths.append({"seq": d, "n": n, "fps": fps})
+            continue
         p = os.path.join(png_dir, f"cap_{i:03d}.png")
         render_caption_image(proj, cap, W, H).save(p)
         paths.append(p)
     return paths
 
 
-def render(pdir):
+def render(pdir, rng=None):
     # 素材を調べる前に依存を見る（ffmpeg が無いのに「素材が無い」と言われても混乱するだけ）
     _deps.require("ffmpeg", "ffprobe")
     with open(os.path.join(pdir, "project.json"), encoding="utf-8") as f:
@@ -624,11 +909,14 @@ def render(pdir):
             for c in mc:
                 visual.append({"kind": "mask", "clip": c})
 
-    # 音声トラック（非ミュートのみ）
+    # 音声トラック（非ミュートのみ）。ダッキングの相手探し用に所属トラックを `_tid`/`_tlabel` で持たせる
     audios = []
     for tr in tracks:
         if tr["type"] == "audio" and not tr.get("muted"):
             ac = apply_cuts_to_clips(tr["clips"], cuts, ("start", "end")) if cuts else tr["clips"]
+            for c in ac:
+                c["_tid"] = tr.get("id") or ""
+                c["_tlabel"] = tr.get("label") or ""
             audios.extend(ac)
 
     # ⚠️ 素材の実在チェックは映像・画像・音声を**まとめて**、ffmpegに渡す前に行う。
@@ -677,33 +965,55 @@ def render(pdir):
         if v["kind"] == "video":
             c = v["clip"]
             vin = float(c.get("in", 0)); vdur = float(c["end"]) - float(c["start"])
-            inputs.append((["-ss", f"{vin:.3f}", "-t", f"{vdur + 0.5:.3f}"],
+            # 再生速度: 出力尺 vdur に対しソースは vdur*speed ぶん必要（読み足りないと尻切れになる）
+            spd = max(0.25, min(4.0, float(c.get("speed") or 1)))
+            inputs.append((["-ss", f"{vin:.3f}", "-t", f"{vdur * spd + 0.5:.3f}"],
                            os.path.join(pdir, c["src"])))
         elif v["kind"] == "caption":
             c = v["clip"]
-            if (c.get("anim") or "") == "pop":
-                # ポップは scale の t 式で毎フレーム拡縮する → 静止png 1フレームでは動かないため
+            if isinstance(v["png"], dict):      # countup: 連番PNGを画像シーケンスとして読む
+                seq = v["png"]
+                inputs.append((["-framerate", str(seq["fps"])],
+                               os.path.join(seq["seq"], "%04d.png")))
+            elif (c.get("anim") or "") in ("pop", "slide"):
+                # ポップ/スライドは t 式で毎フレーム動く → 静止png 1フレームでは動かないため
                 # -loop 1 で end まで連続フレーム化する（フレームレートは出力と揃える）
                 inputs.append((["-loop", "1", "-framerate", str(fps),
                                 "-t", f"{float(c['end']) + 0.5:.3f}"], v["png"]))
             else:
                 inputs.append(([], v["png"]))
-        else:  # image — radius(角丸)/rotate(回転)はPIL前処理（既存の透過と乗算するので集中線等にも安全）
+        else:  # image — radius(角丸)/rotate(回転)/color(色調整)/flip(反転)はPIL前処理
+            #        （既存の透過と乗算するので集中線等にも安全。ffmpegのeqはアルファを壊すため使わない）
             c = v["clip"]
             path = os.path.join(pdir, c["src"])
             radius = float(c.get("radius") or 0)
             rot = float(c.get("rotate") or 0)
             v["grow"] = (1.0, 1.0)     # 回転で外接矩形が広がった比（幅, 高さ）
-            if radius > 0 or abs(rot) > 0.05:
+            if radius > 0 or abs(rot) > 0.05 or has_color_adjust(c.get("adjust")) or c.get("flip"):
                 rp = os.path.join(png_dir, f"prep_{i:03d}.png")
-                w0, h0, w1, h1 = prep_image(path, rp, radius, rot)
+                w0, h0, w1, h1 = prep_image(path, rp, radius, rot,
+                                            c.get("adjust"), bool(c.get("flip")))
                 v["grow"] = (w1 / w0, (h1 / w1) / (h0 / w0))   # 幅の比 と アスペクトの変化
                 path = rp
-            inputs.append(([], path))
+            # フェードは「画が変わる」ので、静止1フレームでは動かない。
+            # pop字幕と同じく -loop 1 で連続フレーム化する（zoompan を使うクリップは
+            # zoompan 自身がフレームを生成するため不要）
+            has_kb = bool((c.get("motion") or {}).get("zoom")) or bool((c.get("motion") or {}).get("pan"))
+            if (float(c.get("fadeIn") or 0) > 0 or float(c.get("fadeOut") or 0) > 0) and not has_kb:
+                v["looped"] = True
+                inputs.append((["-loop", "1", "-framerate", str(fps),
+                                "-t", f"{float(c['end']) - float(c['start']) + 0.5:.3f}"], path))
+            else:
+                inputs.append(([], path))
     aud_idx0 = len(inputs)
     for c in audios:
         ain = float(c.get("in", 0)); adur = float(c["end"]) - float(c["start"])
-        inputs.append((["-ss", f"{ain:.3f}", "-t", f"{adur + 0.5:.3f}"], os.path.join(pdir, c["src"])))
+        pre = ["-ss", f"{ain:.3f}", "-t", f"{adur + 0.5:.3f}"]
+        if c.get("loop"):
+            # ループBGM: ソースを無限リピートして必要秒数だけ読む（クリップをソース長より
+            # 長く伸ばせる唯一の例外。patch.py の長さ検査も loop 時は免除している）
+            pre = ["-stream_loop", "-1"] + pre
+        inputs.append((pre, os.path.join(pdir, c["src"])))
     # 映像クリップの radius: scale後の実寸で角丸マスクを作り alphamerge する（入力は音声の後ろに追加）
     for i, v in enumerate(visual):
         if v["kind"] != "video":
@@ -729,7 +1039,16 @@ def render(pdir):
     out_dir = os.path.join(pdir, "out")
     os.makedirs(out_dir, exist_ok=True)
     title = safe_title((proj.get("meta") or {}).get("title"), pdir)
-    out_path = os.path.join(out_dir, title + ".mp4")
+    # 区間書き出し（--range A B）: 全体を待たずに途中だけ確認する用。
+    # マスター(<title>.mp4)を部分出力で潰さないよう、別名で書き出す
+    if rng:
+        ra = max(0.0, float(rng[0])); rb = min(total_dur, float(rng[1]))
+        if rb - ra < 0.05:
+            raise SystemExit(f"--range が不正です: {rng[0]}〜{rng[1]}（この動画の尺は {total_dur:.2f}秒）")
+        outname = f"{title}_{ra:g}-{rb:g}s.mp4"
+    else:
+        outname = title + ".mp4"
+    out_path = os.path.join(out_dir, outname)
 
     parts = [f"color=c={bg}:s={W}x{H}:r={fps}:d={total_dur:.3f}[bg]"]
     prev = "bg"
@@ -741,7 +1060,24 @@ def render(pdir):
             crop = c.get("crop")  # [left, top, right, bottom] 正規化インセット
             opacity = float(c.get("opacity") if c.get("opacity") is not None else 1)
             fin = float(c.get("fadeIn") or 0); fout = float(c.get("fadeOut") or 0)
-            vf = [f"trim=0:{vdur}"]  # 入力側-ssシーク済みのため0起点。setptsはalphamerge後（マスクと0起点で同期させるため）
+            spd = max(0.25, min(4.0, float(c.get("speed") or 1)))
+            vf = [f"trim=0:{vdur * spd:.3f}"]  # 入力側-ssシーク済みのため0起点。setptsはalphamerge後（マスクと0起点で同期させるため）
+            if abs(spd - 1) > 1e-3:
+                # 速度変更は切り出し直後に掛ける。以降の fade 等は出力時間軸(vdur)で計算できる
+                vf.append(f"setpts=PTS/{spd:.4f}")
+            if c.get("flip"):
+                vf.append("hflip")
+            # 色調整。意味は画像側 apply_color と同じ（CSS filter 準拠）。
+            # brightness は乗算なので eq(加算) ではなく colorchannelmixer で掛ける
+            col = c.get("adjust") or {}
+            if has_color_adjust(col):
+                cb = max(0.0, min(2.0, float(col.get("brightness", 1))))
+                ck = max(0.0, min(3.0, float(col.get("contrast", 1))))
+                cs = max(0.0, min(3.0, float(col.get("saturation", 1))))
+                if abs(cb - 1) > 1e-3:
+                    vf.append(f"colorchannelmixer=rr={cb:.3f}:gg={cb:.3f}:bb={cb:.3f}")
+                if abs(ck - 1) > 1e-3 or abs(cs - 1) > 1e-3:
+                    vf.append(f"eq=contrast={ck:.3f}:saturation={cs:.3f}")
             if crop and any(crop):
                 l, t_, r, b = [float(x) for x in (list(crop) + [0, 0, 0, 0])[:4]]
                 vf.append(f"crop=iw*{max(0.05, 1 - l - r):.4f}:ih*{max(0.05, 1 - t_ - b):.4f}:iw*{l:.4f}:ih*{t_:.4f}")
@@ -808,7 +1144,25 @@ def render(pdir):
             ih0 = iw0 * _ar                      # 回転前の表示高さ
             ih = iw * _ar * ga                   # 回転後の表示高さ
             iy = int(c.get("y", 0) * H - (ih - ih0) / 2)
-            zf = float(((c.get("motion") or {}).get("zoom")) or 0)
+            fin = float(c.get("fadeIn") or 0); fout = float(c.get("fadeOut") or 0)
+            opacity = float(c.get("opacity") if c.get("opacity") is not None else 1)
+            idur = float(c["end"]) - float(c["start"])
+            # フェード/不透明度（適用順: format→fade→opacity。fadeはアルファで効かせ背景に沈める）
+            post_im = []
+            if fin > 0 or fout > 0 or opacity < 1:
+                post_im.append("format=rgba")
+            if fin > 0:
+                post_im.append(f"fade=t=in:st=0:d={fin:.3f}:alpha=1")
+            if fout > 0:
+                post_im.append(f"fade=t=out:st={max(0, idur - fout):.3f}:d={fout:.3f}:alpha=1")
+            if opacity < 1:
+                post_im.append(f"colorchannelmixer=aa={opacity:.3f}")
+            mo = c.get("motion") or {}
+            zf = float(mo.get("zoom") or 0)
+            pan = (mo.get("pan") or "").lower()
+            pan_only = bool(pan) and (not zf or abs(zf - 1) < 1e-3)
+            if pan_only:
+                zf = 1.1   # パンには切り出しの余白が要る。ズーム未指定なら固定1.1で全域を横断する
             if zf and abs(zf - 1) > 1e-3:
                 # Ken Burns: クリップ長をかけて中央基準ズーム（zoom>1=寄り / zoom<1=1/zoomから等倍へ=引き）
                 # ⚠️ ガタつき対策: zoompanは切り出し座標を**入力解像度の整数px**に丸めるため、
@@ -827,22 +1181,46 @@ def render(pdir):
                     _w0, _h0 = (16, 9)
                 iwe = max(2, iw // 2 * 2)
                 oh = max(2, int(round(iwe * _h0 / _w0)) // 2 * 2)
-                dur = float(c["end"]) - float(c["start"]); N = max(1, int(round(dur * fps)))
+                dur = idur; N = max(1, int(round(dur * fps)))
                 ppf1 = (iwe / 2) * abs(1 - 1 / zf) / N   # 倍率1のときの切り出し移動(px/frame)
+                if pan:
+                    # パンは切り出し窓が余白ぶん横断する＝移動量が大きい。倍率選定にも反映する
+                    ppf1 = max(ppf1, iwe * abs(1 - 1 / zf) / N)
                 ss = 2
                 while ss < 8 and ppf1 * ss < 0.8:
                     ss *= 2
-                if zf >= 1:
+                if pan_only:
+                    zx = f"{zf:.4f}"        # パン単独: ズームは固定し、窓の移動だけを見せる
+                elif zf >= 1:
                     zx = f"1+({zf - 1:.4f})*on/{N}"
                 else:
                     z0 = 1.0 / zf
                     zx = f"{z0:.4f}-({z0 - 1:.4f})*on/{N}"
+                # Ken Burns パン: pan は「切り出し窓が動く方向」（left=窓が左へ＝被写体は右へ流れる）。
+                # 窓は端から端まで p=on/N で直線移動。指定の無い軸は中央固定
+                p = f"(on/{N})"
+                xx, yy = "iw/2-(iw/zoom/2)", "ih/2-(ih/zoom/2)"
+                if pan == "left":
+                    xx = f"(iw-iw/zoom)*(1-{p})"
+                elif pan == "right":
+                    xx = f"(iw-iw/zoom)*{p}"
+                elif pan == "up":
+                    yy = f"(ih-ih/zoom)*(1-{p})"
+                elif pan == "down":
+                    yy = f"(ih-ih/zoom)*{p}"
                 # 出力は等倍（以前は2倍→縮小だったが、ジッタ・画質とも差が出ない実測を得て等倍化。
                 #  2026-07-23実測: ジグザグ度0.22/0.22で同一、平均画素差0.97/255、時間は2割減）
+                kb_post = ("," + ",".join(post_im)) if post_im else ""
                 parts.append(f"[{idx}:v]scale={iwe * ss}:-2,zoompan=z='{zx}'"
-                             f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
-                             f":d={N}:s={iwe}x{oh}:fps={fps},"
+                             f":x='{xx}':y='{yy}'"
+                             f":d={N}:s={iwe}x{oh}:fps={fps}{kb_post},"
                              f"setpts=PTS+{c['start']}/TB[im{i}]")
+            elif v.get("looped"):
+                # フェードあり: -loop 1 で連続フレーム化済み。0起点でfadeを掛けてから時刻を戻す
+                parts.append(f"[{idx}:v]scale={iw}:-1,{','.join(post_im)},"
+                             f"setpts=PTS-STARTPTS+{c['start']}/TB[im{i}]")
+            elif post_im:      # opacityのみ（静止でよい）
+                parts.append(f"[{idx}:v]scale={iw}:-1,{','.join(post_im)}[im{i}]")
             else:
                 parts.append(f"[{idx}:v]scale={iw}:-1[im{i}]")
             parts.append(f"[{prev}][im{i}]overlay={ix}:{iy}:enable='between(t,{c['start']},{c['end']})'[o{i}]")
@@ -874,7 +1252,27 @@ def render(pdir):
                     f"[mk{i}b]crop={rw}:{rh}:{rx}:{ry},{proc}[mk{i}m];"
                     f"[mk{i}a][mk{i}m]overlay={rx}:{ry}:{gate}[o{i}]")
         else:  # caption
-            if (c.get("anim") or "") == "pop":
+            if isinstance(v.get("png"), dict):
+                # countup: 数字が動き終わったら最終フレームを clone で引き延ばし、
+                # クリップの終わりまで「決まった数字」を出したままにする。
+                seq = v["png"]
+                hold = max(0.0, float(c["end"]) - float(c["start"]) - seq["n"] / seq["fps"])
+                parts.append(f"[{idx}:v]tpad=stop_mode=clone:stop_duration={hold + 0.5:.3f},"
+                             f"setpts=PTS-STARTPTS+{float(c['start']):.3f}/TB[cu{i}]")
+                parts.append(f"[{prev}][cu{i}]overlay=0:0"
+                             f":enable='between(t,{c['start']},{c['end']})'[o{i}]")
+            elif (c.get("anim") or "") == "slide":
+                # スライドイン: 画面外(既定は左)から 0.32秒で定位置へ。ease-out で「すっと止まる」。
+                # 字幕pngは全画面サイズなので、overlay の x/y を動かすだけでよい。
+                vs = float(c["start"]); dur = float(c.get("animDur", 0.32))
+                frm = (c.get("slideFrom") or "left").lower()
+                prog = f"(1-pow(1-min(max(t-{vs},0)/{dur},1),3))"
+                dx = {"left": f"-main_w*(1-{prog})", "right": f"main_w*(1-{prog})"}.get(frm, "0")
+                dy = {"top": f"-main_h*(1-{prog})", "bottom": f"main_h*(1-{prog})"}.get(frm, "0")
+                parts.append(f"[{idx}:v]fade=t=in:st={vs}:d=0.10:alpha=1[sl{i}]")
+                parts.append(f"[{prev}][sl{i}]overlay=x='{dx}':y='{dy}'"
+                             f":enable='between(t,{c['start']},{c['end']})'[o{i}]")
+            elif (c.get("anim") or "") == "pop":
                 # ポップ登場＝スタンプ: 1.9倍から0.16秒で等倍へ「叩きつけ」（ease-in=着地直前が最速）＋
                 # 最初の0.06秒フェードイン。ドーンと同時に画面に貼り付く演出。
                 # ⚠️ 逆（小さく縮んで収まる・ゆっくり0.3秒）は「ドーンなのに小さくなる」で不成立（2026-07-17実害）
@@ -896,10 +1294,23 @@ def render(pdir):
         c = v["clip"]
         if c.get("audioLinked", True) is False:
             continue
+        if not has_audio_stream(os.path.join(pdir, c["src"])):
+            continue   # 無音映像（画面収録など）。[N:a] を張るとグラフ構築ごと落ちる
         vin = float(c.get("in", 0)); vdur = float(c["end"]) - float(c["start"])
         gain = float(c.get("gain", 1.0)); delay_ms = int(round(float(c["start"]) * 1000))
         fin = float(c.get("fadeIn") or 0); fout = float(c.get("fadeOut") or 0)
-        af = [f"atrim=0:{vdur}", "asetpts=PTS-STARTPTS", f"volume={gain}"]  # 入力側-ssシーク済み
+        spd = max(0.25, min(4.0, float(c.get("speed") or 1)))
+        af = [f"atrim=0:{vdur * spd:.3f}", "asetpts=PTS-STARTPTS"]  # 入力側-ssシーク済み
+        if abs(spd - 1) > 1e-3:
+            # atempo は 0.5〜2 の範囲しか受けないため、範囲外は分割して連結する
+            s_ = spd
+            while s_ > 2.0:
+                af.append("atempo=2.0"); s_ /= 2.0
+            while s_ < 0.5:
+                af.append("atempo=0.5"); s_ /= 0.5
+            if abs(s_ - 1) > 1e-3:
+                af.append(f"atempo={s_:.4f}")
+        af.append(f"volume={gain}")
         # ジャンプカット境界のプチノイズ防止: 全ピースに8msのマイクロフェード（明示fadeIn/Outと共存）
         af.append("afade=t=in:st=0:d=0.008")
         af.append(f"afade=t=out:st={max(0, vdur - 0.008):.3f}:d=0.008")
@@ -914,20 +1325,36 @@ def render(pdir):
         idx = aud_idx0 + k
         ain = float(c.get("in", 0)); adur = float(c["end"]) - float(c["start"])
         gain = float(c.get("gain", 1.0)); delay_ms = int(round(float(c["start"]) * 1000))
-        # 効果音/BGMも境界プチノイズ防止の8msマイクロフェードを常時付与（入力側-ssシーク済み）
-        parts.append(f"[{idx}:a]atrim=0:{adur},asetpts=PTS-STARTPTS,"
-                     f"afade=t=in:st=0:d=0.008,afade=t=out:st={max(0, adur - 0.008):.3f}:d=0.008,"
-                     f"volume={gain},adelay={delay_ms}:all=1[aud{k}]")
+        # ダッキング: duck 指定があれば、相手（既定=ナレーション）の区間だけ自動で沈む。
+        # ⚠️ 検証で音量を測るときは、mp4 を直接 -ss シークすると AAC で正しく測れない。
+        #    いったん音声を丸ごと wav 化してから区間を volumedetect すること（2026-08-06 実測）
+        vol = duck_expr(c, audios, gain) or f"volume={gain}"
+        fin = float(c.get("fadeIn") or 0); fout = float(c.get("fadeOut") or 0)
+        af = [f"atrim=0:{adur}", "asetpts=PTS-STARTPTS",
+              # 効果音/BGMも境界プチノイズ防止の8msマイクロフェードを常時付与（入力側-ssシーク済み）
+              "afade=t=in:st=0:d=0.008",
+              f"afade=t=out:st={max(0, adur - 0.008):.3f}:d=0.008"]
+        if fin > 0:
+            af.append(f"afade=t=in:st=0:d={fin:.3f}")
+        if fout > 0:
+            af.append(f"afade=t=out:st={max(0, adur - fout):.3f}:d={fout:.3f}")
+        af += [vol, f"adelay={delay_ms}:all=1"]
+        parts.append(f"[{idx}:a]{','.join(af)}[aud{k}]")
         alabels.append(f"aud{k}")
 
+    # ⚠️ 末尾の asetpts=N/SR/TB は省略禁止。atempo（倍速音声）の PTS が amix を経て
+    #    非単調になると、AAC エンコーダが**エラーを出さずに音声を途中で打ち切る**
+    #    （2026-08-06 実測: 倍速クリップの開始時刻で音声が切れ、stream duration が 0.01s になった）。
+    #    サンプル数ベースで振り直せば全構成で安全。
     if not alabels:
         amap = None
     elif len(alabels) == 1:
-        parts.append(f"[{alabels[0]}]anull[aout]")
+        parts.append(f"[{alabels[0]}]asetpts=N/SR/TB[aout]")
         amap = "[aout]"
     else:
         mix_in = "".join(f"[{l}]" for l in alabels)
-        parts.append(f"{mix_in}amix=inputs={len(alabels)}:normalize=0:dropout_transition=0[aout]")
+        parts.append(f"{mix_in}amix=inputs={len(alabels)}:normalize=0:dropout_transition=0,"
+                     f"asetpts=N/SR/TB[aout]")
         amap = "[aout]"
 
     # ラウドネス正規化（既定ON: YouTube想定 -14 LUFS / TP -1.5）。audio.loudnorm={"on":false} で無効化
@@ -953,7 +1380,7 @@ def render(pdir):
     # 途中で失敗・中断すると「壊れた数十バイトのmp4」が残る。しかも mtime は新しいので
     # サーバの鮮度判定（project.jsonより新しければスキップ）を通り、
     # 次の書き出しが再生できないファイルを"成功"として返してしまう
-    tmp_path = os.path.join(out_dir, f".{title}.rendering.mp4")
+    tmp_path = os.path.join(out_dir, "." + outname[:-4] + ".rendering.mp4")
     # 前回が強制終了(kill)された場合は後始末が走らないので、ここで掃除しておく
     for stale in os.listdir(out_dir):
         if stale.startswith(".") and stale.endswith(".rendering.mp4"):
@@ -966,8 +1393,11 @@ def render(pdir):
         cmd += pre + ["-i", p]
     cmd += ["-filter_complex_script", fc_path, "-map", f"[{prev}]"]
     cmd += (["-map", amap] if amap else ["-an"])
-    cmd += ["-t", f"{total_dur:.3f}"]
-    cmd += ["-c:v", "libx264", "-preset", "medium", "-crf", "20",
+    # 出力側の -ss はグラフ全体を評価しつつ範囲外フレームを捨てる＝合成結果はフル書き出しと同一
+    cmd += (["-ss", f"{ra:.3f}", "-t", f"{rb - ra:.3f}"] if rng else ["-t", f"{total_dur:.3f}"])
+    if os.environ.get("VE_KEEP_FC"):
+        print("CMD:", " ".join(cmd + ["..."]), file=sys.stderr)
+    cmd += ["-c:v", pick_video_codec(), "-preset", "medium", "-crf", "20",
             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
             "-movflags", "+faststart",   # 頭出し再生できる形に（SNS投稿用）
             tmp_path]
@@ -1001,11 +1431,18 @@ def render(pdir):
         sys.exit(1)
     os.replace(tmp_path, out_path)
     try:
-        os.remove(fc_path)          # 成功したらフィルタグラフの一時ファイルは残さない
+        if not os.environ.get('VE_KEEP_FC'):
+            os.remove(fc_path)          # 成功したらフィルタグラフの一時ファイルは残さない
     except OSError:
         pass
     print("OK:", out_path)
 
 
 if __name__ == "__main__":
-    render(sys.argv[1] if len(sys.argv) > 1 else ".")
+    import argparse
+    ap = argparse.ArgumentParser(description="project.json を MP4 に書き出す")
+    ap.add_argument("pdir", nargs="?", default=".")
+    ap.add_argument("--range", nargs=2, type=float, metavar=("開始秒", "終了秒"),
+                    help="この区間だけ書き出す（out/<title>_A-Bs.mp4。全体を待たずに途中確認する用）")
+    args = ap.parse_args()
+    render(args.pdir, args.range)

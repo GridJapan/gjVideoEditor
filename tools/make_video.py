@@ -27,6 +27,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TPL_DIR = os.path.join(ROOT, "templates")
 ASSETS = os.path.join(ROOT, "assets")
 
+# 字幕の溢れ検査はレンダラの wrap() を借りる（別実装にすると警告と結果が食い違う）
+try:
+    import importlib.util as _ilu
+    _spec = _ilu.spec_from_file_location("_ve_render", os.path.join(ROOT, "renderer", "render.py"))
+    _R = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_R)
+except Exception:
+    _R = None
+
 
 def die(msg):
     print("❌ " + msg, file=sys.stderr)
@@ -121,6 +129,59 @@ class SE:
                            "end": round(at + self.LEN[name], 2), "gain": gain})
 
 
+def script_engines(paths):
+    """台本群が実際に使うTTSエンジン名の集合。読めない台本は edge 扱い（安全側）。"""
+    try:
+        presets = json.load(open(os.path.join(ROOT, "tools", "voices.json"),
+                                 encoding="utf-8"))["presets"]
+    except Exception:
+        return {"edge"}
+    engines = set()
+    for p in paths:
+        try:
+            sc = json.load(open(p, encoding="utf-8"))
+        except Exception:
+            engines.add("edge"); continue
+        for b in sc.get("beats", []):
+            key = b.get("voice") or sc.get("voice", "narrator-m")
+            engines.add((presets.get(key) or {}).get("engine", "edge"))
+    return engines or {"edge"}
+
+
+def caption_overflow_warnings(tpl, beat, nid, i):
+    """字幕が枠に収まるかを **実際の描画幅** で確かめる。
+
+    文字数で判定してはいけない。同じ22字でも欧文と和文で幅が2倍違うため、
+    「警告が出ても実は収まる／出なくても溢れる」になり当てにならない。
+    レンダラの wrap() をそのまま呼ぶので、警告と実際の書き出しが食い違わない。
+    （2026-08-03: 英語字幕が "under ¥ / 500" と割れ、通貨記号だけ行末に残った）
+    """
+    out = []
+    if _R is None:
+        return out
+    cap = beat.get("caption") or ""
+    if not cap:
+        return out
+    try:
+        lay = pick_layout(tpl, cap, beat.get("layout"))
+        W = tpl["canvas"]["w"]
+        pad = ((tpl.get("style") or {}).get("box") or {}).get("pad", 22)
+        maxw = W * lay["w"] - pad * 2
+        font = _R.get_font((tpl.get("style") or {}).get("font", "Hiragino Kaku Gothic Pro"),
+                           int(lay["fs"]), bold=True)
+        draw = _R.ImageDraw.Draw(_R.Image.new("RGBA", (8, 8)))
+        for para in cap.replace("**", "").split("\n"):
+            if not para.strip():
+                continue
+            lines = _R.wrap(draw, para, font, maxw)
+            if len(lines) > 1:
+                out.append(f"beat#{i}({nid}): 字幕が枠に収まらず {len(lines)}行に折り返されます"
+                           f"「{para[:20]}」→ 文言を短くするか \\n で明示改行を")
+    except Exception:
+        pass
+    return out
+
+
 def pick_layout(tpl, cap, given):
     lay = tpl["layouts"]
     if given:
@@ -138,13 +199,16 @@ def build_explain(tpl, script, pdir):
     font = tpl["style"]["font"]
     se = SE()
     t = 0.0
-    narr, caps, cards, spans = [], [], [], []
+    narr, caps, cards, spans, subs = [], [], [], [], []
 
     if script.get("hook"):
         h = script["hook"]
         dur = float(h.get("dur", 3.0))
         cards.append({**strip_doc(P["hook"]), "font": font, "text": h["text"],
                       "start": 0, "end": round(dur, 2)})
+        if h.get("text_ja") and "hook_ja" in P:
+            subs.append({**strip_doc(P["hook_ja"]), "font": font, "text": h["text_ja"],
+                         "start": 0, "end": round(dur, 2)})
         spans.append([script["beats"][0]["image"], 0, dur, strip_doc(tpl["layouts"]["boxed"])])
         se.add(tpl["sfx"]["hook"]["name"], 0.05, tpl["sfx"]["hook"]["gain"])
         t += dur
@@ -158,9 +222,18 @@ def build_explain(tpl, script, pdir):
             die(f"音声 {nid}.mp3 がありません。先に --voice で作ってください")
         narr.append({"src": nid + ".mp3", "start": round(t, 2), "end": round(t + d, 2)})
         if cap:
+            # caption_style は台本側の見た目の上書き（色など）。
+            # ここに書いておけば **再ビルドしても消えない**。patch.py で当てた色は
+            # --force の作り直しで失われるので、恒久的な指定は台本に持たせる。
             caps.append({**strip_doc(P["caption"]), "font": font, "text": cap,
                          "y": lay["cap_y"], "align": lay["align"], "fontsize": lay["fs"],
                          "x": lay["x"], "w": lay["w"], "h": lay["h"], "anim": lay.get("anim"),
+                         "start": round(t, 2), "end": round(t + d + gap * 0.6, 2),
+                         **(b.get("caption_style") or {})})
+        # 日本語の副字幕（海外向けでは現地語が主・日本語は小さく下段）。テンプレが対応する型のみ
+        if b.get("caption_ja") and "caption_ja" in P:
+            subs.append({**strip_doc(P["caption_ja"]), "font": font, "text": b["caption_ja"],
+                         "y": round(lay["cap_y"] + lay.get("sub_dy", 0.082), 4),
                          "start": round(t, 2), "end": round(t + d + gap * 0.6, 2)})
         if not spans or spans[-1][0] != b["image"]:
             s = tpl["sfx"]["scene"]
@@ -176,6 +249,9 @@ def build_explain(tpl, script, pdir):
         se.add(tpl["sfx"]["end"]["name"], t - 0.05, tpl["sfx"]["end"]["gain"])
         cards.append({**strip_doc(P["outro"]), "font": font, "text": o["text"],
                       "start": round(t, 2), "end": round(t + dur, 2)})
+        if o.get("text_ja") and "outro_ja" in P:
+            subs.append({**strip_doc(P["outro_ja"]), "font": font, "text": o["text_ja"],
+                         "start": round(t, 2), "end": round(t + dur, 2)})
         spans.append([script["beats"][-1]["image"], t, t + dur,
                       strip_doc(tpl["layouts"]["boxed"])])
         t += dur
@@ -194,7 +270,7 @@ def build_explain(tpl, script, pdir):
         imgs.append({"src": f"{im}.png", "start": round(a, 2), "end": round(b, 2),
                      "x": round((1 - lay["img_w"]) / 2, 3), "y": lay["img_y"],
                      "w": lay["img_w"], "motion": {"zoom": z}})
-    return total, {"cards": cards, "captions": caps, "images": imgs,
+    return total, {"cards": cards, "captions": caps, "subcaptions": subs, "images": imgs,
                    "narration": narr, "sfx": se.clips}
 
 
@@ -239,7 +315,7 @@ def build_chat(tpl, script, pdir):
                          "narration": narr, "sfx": se.clips}
 
 
-BUILDERS = {"sns-explain": build_explain, "chat": build_chat}
+BUILDERS = {"sns-explain": build_explain, "sns-global": build_explain, "chat": build_chat}
 
 
 def lint_script(script, tpl, pdir):
@@ -274,10 +350,7 @@ def lint_script(script, tpl, pdir):
             if lay and lay not in tpl.get("layouts", {}):
                 errors.append(f"beat#{i}({nid}): layout '{lay}' は無効。"
                               f"使えるのは: {', '.join(tpl.get('layouts', {}))}")
-            for line in (b.get("caption") or "").split("\n"):
-                if len(line) > 22:   # 自動折り返しで崩れやすい長さ。明示改行を促す
-                    warnings.append(f"beat#{i}({nid}): 字幕の1行が長い({len(line)}字)"
-                                    f"「{line[:16]}…」。改行(\\n)で分けると崩れにくい")
+            warnings += caption_overflow_warnings(tpl, b, nid, i)
         else:
             scr = b.get("screen")
             nl = len(script.get("chat", {}).get("lines", []))
@@ -366,10 +439,13 @@ def process_one(path, do_voice, do_render, lint_only=False, force=False):
         gen_chat.build(pdir, script["chat"])
         from PIL import Image
         n = len(script["chat"]["lines"])
-        base = Image.open(os.path.join(pdir, f"chat{n}.png")).convert("RGB")
-        white = Image.new("RGB", base.size, (238, 241, 245))
+        # ⚠️ 変数名に base を使わないこと。台本ファイル名の `base`（meta.madeBy.script に載る）を
+        #    上書きしてしまい、保存時に「Object of type Image is not JSON serializable」で落ちる
+        #    （2026-08-07 実測。会話型は最後まで通ったことが無かった）
+        last_png = Image.open(os.path.join(pdir, f"chat{n}.png")).convert("RGB")
+        white = Image.new("RGB", last_png.size, (238, 241, 245))
         # 締めカードの背景。白を72%混ぜて薄くする（重ねると両方読めなくなるため）
-        Image.blend(base, white, 0.72).save(os.path.join(pdir, "chat_fade.png"))
+        Image.blend(last_png, white, 0.72).save(os.path.join(pdir, "chat_fade.png"))
 
     if do_voice:
         gen_voice(script, pdir)
@@ -378,12 +454,16 @@ def process_one(path, do_voice, do_render, lint_only=False, force=False):
     font = tpl["style"]["font"]
     bgm = script.get("bgm") or tpl["assets"]["bgm_default"]
     full = {
-        "logo": [{"src": "logo.png", "start": 0, "end": total, **tpl["parts"]["logo"]}],
+        # ロゴを持たないテンプレートがある（海外向けは国内ブランドを出さない）
+        "logo": ([{"src": "logo.png", "start": 0, "end": total, **tpl["parts"]["logo"]}]
+                 if "logo" in tpl["parts"] else []),
         "chip": [{**strip_doc(tpl["parts"]["chip"]), "font": font,
                   "text": script.get("chip", ""), "start": 0, "end": total}],
         "source": [{**strip_doc(tpl["parts"]["source"]), "font": font,
                     "text": script.get("source", ""), "start": 0, "end": total}],
-        "banner": [{"src": "banner.png", "start": 0, "end": total, **tpl["parts"]["banner"]}],
+        # 帯バナーを持たないテンプレートがある（海外向けは国内向けCTAを載せない）
+        "banner": ([{"src": "banner.png", "start": 0, "end": total, **tpl["parts"]["banner"]}]
+                   if "banner" in tpl["parts"] else []),
         "background": [{"src": "bg.png", "start": 0, "end": total, "x": 0, "y": 0, "w": 1}],
         "bgm": [{"src": bgm, "start": 0, "end": total, "gain": script.get("bgm_gain", 0.05)}],
     }
@@ -434,14 +514,18 @@ def main():
                     help="既存プロジェクトでも上書きする（既定は他の台本/UI製のものを守って中断）")
     a = ap.parse_args()
 
-    # 台本を読む前に依存を見る（--lint だけなら ffmpeg は要らない）
-    if not a.lint:
-        need = ["ffmpeg", "ffprobe"] + (["edge-tts"] if a.voice else [])
-        _deps.require(*need)
-
     paths = expand_paths(a.script)
     if not paths:
         die("台本が見つかりません")
+
+    # 依存は「実際に使うものだけ」を要求する（--lint だけなら ffmpeg も要らない）。
+    # 台本が ElevenLabs だけを使うのに edge-tts を強制すると、入れていない環境で
+    # --voice が丸ごと使えなくなる（2026-08-03に踏んだ。gen_voice.py 直叩きで回避した）
+    if not a.lint:
+        need = ["ffmpeg", "ffprobe"]
+        if a.voice and "edge" in script_engines(paths):
+            need.append("edge-tts")
+        _deps.require(*need)
     n = len(paths)
     ok, failed = [], []
     for idx, p in enumerate(paths, 1):

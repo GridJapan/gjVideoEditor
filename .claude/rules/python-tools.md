@@ -56,6 +56,44 @@ PYTHONIOENCODING=cp932 python3 -c "...TextIOWrapper(...,encoding='cp932')..."
 
 素材はgit外なので、上書きすると復旧が非常に面倒になる。
 
+**実装は `tools/_guard.py` にある。自前で書かない:**
+
+```python
+from _guard import guard_overwrite, stamp
+TOOL = "build_xxx.py"
+guard_overwrite(pdir, TOOL, args.force)      # main の入口で
+pj["meta"]["madeBy"] = {"tool": TOOL}        # 保存する dict に刻む
+```
+
+**引数を検証せず `sys.argv[1]` を使うビルダーを書かないこと。**
+2026-08-07、`--help` を渡しただけでビルダーが走り、`makasete-shunin-lp` の
+**BGMトラックが丸ごと消えた**（UIで後から足したもの＝台本には無い）。
+`argparse` で受けてから `guard_overwrite` を通す。
+
+## 依存の判定は `_deps` に一本化する（`sys.executable` だけを見ない）
+
+pyenv 等では「ツールを動かす Python」と「パッケージの入った Python」が食い違う。
+`_deps.python_with("edge_tts")` が PATH と pyenv 配下まで探す。**自前で探索を書かない。**
+
+2026-08-07: `gen_voice.py` だけが探索を持ち、`_deps` は `sys.executable` しか見ていなかったため、
+**`gen_voice.py` は生成できるのに `make_video.py --voice` が「入っていません」と拒否**した
+（＝ templates/README.md の「まずこれを通してください」が通らない）。
+
+## 変数名の使い回しに注意（保存が落ちる）
+
+2026-08-07: `make_video.py` の会話型で `base = Image.open(...)` が
+台本ファイル名の `base`（`meta.madeBy.script` に載る）を上書きし、
+保存時に `Object of type Image is not JSON serializable` で落ちていた。
+**会話型は一度も最後まで通ったことが無かった。**
+`project.json` に載る値を組み立てる変数は、途中で別用途に使い回さない。
+
+## `_wincompat` は `_deps` より先に読む
+
+順序が逆だと、依存不足の案内そのものが cp932 の `UnicodeEncodeError` で消える
+（＝親切エラーの仕組みが、いちばん必要な場面で機能しない）。
+`_deps.py` 自身も `_wincompat` を読むようにしてあるので通常は事故らないが、
+新しく書くときも `_wincompat` を先頭に置くこと。
+
 ## 実在のプロジェクト名を決め打ちしない
 
 フォールバック値・既定値・プレースホルダに**特定のプロジェクト名を書かない**。
