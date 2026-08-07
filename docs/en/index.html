@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>video-editor — Build with words, finish in the UI</title>
-<meta name="description" content="Ask an AI in plain language, then finish it on a timeline UI. Runs on the Python standard library, Pillow and ffmpeg. No cloud, no API keys. MIT licensed.">
-<meta property="og:title" content="video-editor">
-<meta property="og:description" content="Build with words, finish in the UI. No dependencies to speak of. MIT licensed.">
+<title>GJ VIDEO EDITOR — Built by AI, fixable where it matters</title>
+<meta name="description" content="Describe the video you want and an AI assembles it end to end. Keep it as is, or fix the parts that bother you on a timeline — faster than explaining them again. Python standard library + Pillow + ffmpeg. MIT licensed.">
+<meta property="og:title" content="GJ VIDEO EDITOR">
+<meta property="og:description" content="Built by AI, fixable where it matters. No dependencies to speak of. MIT licensed.">
 <meta property="og:image" content="../assets/editor.png">
 <meta property="og:type" content="website">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="alternate" hreflang="ja" href="https://gridjapan.github.io/gjVideoEditor/jp/">
 <link rel="alternate" hreflang="en" href="https://gridjapan.github.io/gjVideoEditor/en/">
 <style>
@@ -29,7 +30,9 @@
   header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.88);
     backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}
   .hbar{display:flex;align-items:center;gap:20px;height:60px}
-  .logo{font-weight:700;color:var(--ink);font-size:15px;letter-spacing:.02em}
+  .logo{font-weight:700;color:var(--ink);font-size:15px;letter-spacing:.02em;
+    display:inline-flex;align-items:center;gap:8px}
+  .logo img{display:block;border-radius:4px}
   .hbar nav{margin-left:auto;display:flex;gap:18px;align-items:center;font-size:13px}
   .hbar nav a{color:var(--body)}
   .lang{color:var(--muted);font-size:12px}
@@ -108,7 +111,7 @@
 
 <header>
   <div class="wrap hbar">
-    <span class="logo">🎬 GJ VIDEO EDITOR</span>
+    <span class="logo"><img src="../assets/mark.png" alt="" width="22" height="22">GJ VIDEO EDITOR</span>
     <nav>
       <a href="#how">How</a>
       <a href="#features">Features</a>
@@ -124,10 +127,11 @@
 
   <div class="hero">
     <p class="badge">Work in progress · v0.16.0</p>
-    <h1>Video made by AI, <em>editable in a real UI.</em></h1>
+    <h1>Built by AI, <em>fixable where it matters.</em></h1>
     <p class="lede">
-      Ask for a video, then drag what came out around on a timeline.
-      Prompt again afterwards and your manual edits are still there.
+      Describe the video you want and the AI handles the script, the voice, the subtitles
+      and the export. Ship it as is — or, when something bothers you,
+      <strong>fix it on the timeline instead of explaining it again.</strong>
     </p>
     <p class="sub">Python standard library + Pillow + ffmpeg. No cloud, no API keys.</p>
     <img class="shot" src="../assets/editor.png" alt="The video-editor workspace: preview on top, multi-track timeline below">
@@ -149,12 +153,12 @@
 
     <div class="cols">
       <div class="card">
-        <h3>The AI writes (80%)</h3>
-        <p>Changes land as diffs. Overlaps, missing assets and out-of-range durations are <strong>rejected before saving</strong>, so you never end up with a broken project.</p>
+        <h3>Ask once, get a video</h3>
+        <p>The AI's changes land as diffs. Overlapping clips, missing assets and out-of-range durations are <strong>rejected before saving</strong>, so you never end up with a broken project.</p>
       </div>
       <div class="card">
-        <h3>You fix (20%)</h3>
-        <p>Drag things around on the timeline in your browser. Conflicting edits from elsewhere are detected and blocked.</p>
+        <h3>Reach in whenever you want</h3>
+        <p>"Move that subtitle half a second later and a bit to the right" is sometimes just faster to drag than to describe. The UI shows exactly the same data.</p>
       </div>
     </div>
 
@@ -171,11 +175,36 @@
       <tr><th>Timeline</th><td>Multi-track video, subtitles, images and audio. Drag &amp; drop, split, undo/redo, snapping, zoom</td></tr>
       <tr><th>Non-destructive</th><td>Keep one long source and just move the in-point. Nothing is cut out, so <strong>you can always extend a clip's edges</strong></td></tr>
       <tr><th>Subtitles</th><td>Drag, resize, fonts, 360° rotation, <strong>vertical writing</strong>, inline emphasis, edge snapping</td></tr>
+      <tr><th>Subtitle animation</th><td><strong>Counting numbers up</strong>, typewriter reveal, slide-in from off-screen, stamp-style pop. Add a <strong>comparison bar</strong> to make a gap between two numbers obvious</td></tr>
+      <tr><th>Image motion</th><td>Fade in/out, opacity, slow push in or pull out (Ken Burns), and panning in any direction</td></tr>
+      <tr><th>Video adjustments</th><td>Playback speed (0.25×–4×, pitch preserved), horizontal flip, cropping, rounded corners</td></tr>
+      <tr><th>Colour</th><td>Brightness, contrast and saturation. <strong>The preview and the export use the same formula</strong>, so what you see is what you get</td></tr>
+      <tr><th>Transitions</th><td>Fade in, fade out and cross-fade in one click. The tool works out the layering for you</td></tr>
       <tr><th>Picture-in-picture</th><td>Drag and scale right on the preview. Set the corner radius to 1.0 for a perfect circle</td></tr>
-      <tr><th>Export</th><td>MP4 / WebM / GIF / MP3, with quality and resolution options</td></tr>
+      <tr><th>Audio</th><td>Gain, fades, <strong>automatic music ducking</strong> under narration, looping for short tracks, loudness normalisation</td></tr>
       <tr><th>Narration</th><td>Free text-to-speech, no API key. Mix multiple voices</td></tr>
+      <tr><th>Masking</th><td>Mosaic, blur or solid fill — for whatever wandered into a screen recording</td></tr>
+      <tr><th>Multilingual</th><td>Fonts switch automatically by script. <strong>Characters the font cannot draw are caught before export</strong></td></tr>
+      <tr><th>Subtitle files</th><td>Import and export SRT, so subtitles made elsewhere come straight in</td></tr>
+      <tr><th>Export</th><td>MP4 / WebM / GIF / MP3, with quality and resolution options, plus <strong>an arbitrary time range</strong> when you only want to check the seconds you just changed</td></tr>
       <tr><th>Batch</th><td>One script file, one command, one video. You don't write Python</td></tr>
     </table>
+
+    <h3 style="margin-top:34px">A broken export is never called a success</h3>
+    <p>
+      Exports have a habit of running to completion even when something went wrong.
+      This one <strong>checks before it saves and before it renders.</strong>
+    </p>
+    <table>
+      <tr><th>Overlaps &amp; length</th><td>No two clips overlapping on one track; nothing stretched past the end of its source</td></tr>
+      <tr><th>Missing glyphs</th><td><strong>Characters your chosen font cannot draw</strong> — the ones that come out as boxes — are found in advance</td></tr>
+      <tr><th>Legibility</th><td>Contrast ratio between subtitle and backing plate, and overflow measured at the real rendered width</td></tr>
+      <tr><th>Missing assets</th><td>Stops and names the files. You never get a raw ffmpeg error</td></tr>
+    </table>
+    <p class="note">
+      The checks have their own test suite (40 renderer cases, 32 for the editing tool, 31 for the server).
+      Passing means <strong>the pixels and the audio levels of the exported file were measured</strong> — not merely that nothing threw.
+    </p>
 
     <h3 style="margin-top:34px">Made with this tool</h3>
     <p class="note">The 28-second video below was assembled and exported with this tool.</p>
