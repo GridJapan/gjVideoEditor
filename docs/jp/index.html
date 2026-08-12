@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GJ VIDEO EDITOR — AIで作り、必要なところだけ直せる動画ツール</title>
-<meta name="description" content="日本語で頼めばAIが動画を1本組み上げます。気になるところだけタイムラインUIで直せば、言い直すより早い。Python標準ライブラリ＋Pillow＋ffmpegだけで動く、依存ゼロ・MITライセンス。">
+<title>GJ VIDEO EDITOR — 言葉でつくって、気になったところだけ直す</title>
+<meta name="description" content="日本語で「こういう動画を作って」と伝えると、台本、ナレーション、字幕、書き出しまで進みます。直したくなったら、タイムラインでその部分だけ触れます。ローカルで完結、MITライセンス。">
 <meta property="og:title" content="GJ VIDEO EDITOR">
-<meta property="og:description" content="AIで作り、必要なところだけ直せる。依存ゼロ・MITライセンス。">
+<meta property="og:description" content="言葉でつくって、気になったところだけ直す。ローカルで完結・MITライセンス。">
 <meta property="og:image" content="../assets/hero.jpg">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
@@ -63,13 +63,13 @@
   .note{font-size:13px;color:var(--muted)}
 
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:24px}
-  .cols4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+  .cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:18px}
   .card{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
   .card h3{margin-top:0}
   .card h4{margin:0 0 6px;font-size:15px;color:var(--ink)}
   .card p{font-size:14px;margin-bottom:0}
-  .cols4 .card{padding:16px 18px}
-  .cols4 .card p{font-size:13px;line-height:1.75}
+  .cols3 .card{padding:18px 20px}
+  .cols3 .card p{font-size:13.5px;line-height:1.8}
 
   pre{background:#0f172a;color:#e2e8f0;padding:16px 18px;border-radius:9px;overflow-x:auto;
     font:13px/1.75 var(--mono);margin:16px 0}
@@ -109,7 +109,7 @@
     .hero{padding:48px 0 4px}
     .hero h1{font-size:28px}
     .cols{grid-template-columns:1fr;gap:16px}
-    .cols4{grid-template-columns:1fr 1fr;gap:12px}
+    .cols3{grid-template-columns:1fr;gap:12px}
     .hbar nav a:not(.ghbtn):not(.lang-a){display:none}
   }
 </style>
@@ -134,11 +134,10 @@
 
   <div class="hero">
     <p class="badge">開発中 · v0.16.0</p>
-    <h1>AIで作り、<em>必要なところだけ直せる。</em></h1>
+    <h1>言葉でつくって、<em>気になったところだけ直す。</em></h1>
     <p class="lede">
-      作りたい動画を日本語で伝えれば、台本・音声・字幕・書き出しまでAIが進めます。
-      そのまま完成でも構いません。気になるところがあれば、
-      <strong>言い直すより早く、タイムラインで直せます。</strong>
+      日本語で「こういう動画を作って」と伝えると、台本、ナレーション、字幕、書き出しまで進みます。
+      直したくなったら、タイムラインでその部分だけ触ってください。
     </p>
     <p class="sub">Python標準ライブラリ ＋ Pillow ＋ ffmpeg だけ。クラウドもAPIキーも不要です。</p>
     <img class="shot hero-img" src="../assets/hero.jpg" alt="">
@@ -146,7 +145,7 @@
 
   <section id="how">
     <div class="num">01 / 仕組み</div>
-    <h2>手で直したところは、AIに頼み直しても消えません</h2>
+    <h2>直したあとに、もう一度伝えても大丈夫</h2>
     <p>
       AIに動画を作らせると、たいてい出てくるのはコード（React や HTML）です。
       1か所だけ直したくても、コードを読むか、AIに頼み直すことになります。
@@ -161,12 +160,12 @@
 
     <div class="cols">
       <div class="card">
-        <h3>頼めば、1本できる</h3>
-        <p>AIの変更は差分パッチとして当たります。クリップの重なり・素材の欠落・尺の超過は<strong>保存する前に弾かれる</strong>ので、壊れたものができません。</p>
+        <h3>日本語で伝えると、そこまで進む</h3>
+        <p>「こういう動画を作って」と日本語で伝えると、台本、ナレーション、字幕、書き出しまで進みます。</p>
       </div>
       <div class="card">
-        <h3>直したいときは、そのまま触れる</h3>
-        <p>「この字幕を0.5秒ずらして、少し右へ」を言葉で伝えるより、掴んで動かすほうが早い場面があります。UIには同じデータがそのまま映っています。</p>
+        <h3>気になったところは、タイムラインで直す</h3>
+        <p>AIが組んだものは、そのままタイムラインに載っています。ずらしたい字幕や動かしたい映像は、そこだけ触ってください。あとから言葉で伝えても、先に直した内容は残ります。</p>
       </div>
     </div>
 
@@ -176,11 +175,10 @@
   </section>
 
   <section id="features">
-    <div class="num">02 / 見てもらうのが早い</div>
-    <h2>この動画も、日本語で頼んで作りました</h2>
+    <div class="num">02 / 実際の例</div>
+    <h2>日本語で伝えてできたもの</h2>
     <p>
-      台本もナレーションも字幕も、最初はAIが組みます。
-      そのあと気になったところだけ、タイムラインで直しました。
+      台本、ナレーション、字幕はAIが組みました。そのあと、気になったところだけタイムラインで触っています。
     </p>
     <video controls preload="none" poster="../assets/sample-poster.jpg">
       <source src="../assets/sample.mp4" type="video/mp4">
@@ -198,23 +196,19 @@
       <tr><th>多言語版</th><td>同じ構成のまま、字幕とナレーションだけ差し替えます</td></tr>
     </table>
 
-    <h3 style="margin-top:40px">やることは4つだけ</h3>
-    <div class="cols4">
+    <h3 style="margin-top:40px">つくる／直す／書き出す</h3>
+    <div class="cols3">
       <div class="card">
-        <h4>作る</h4>
-        <p>日本語で頼むと、台本・音声・字幕まで組み上がります</p>
+        <h4>言葉でつくる</h4>
+        <p>日本語で伝えると、台本、ナレーション、字幕、書き出しまで進みます。</p>
       </div>
       <div class="card">
-        <h4>直す</h4>
-        <p>映像・字幕・画像・音を、タイムラインで動かします</p>
+        <h4>気になったところを直す</h4>
+        <p>できたものを、そのままタイムラインで触れます。</p>
       </div>
       <div class="card">
-        <h4>確かめる</h4>
-        <p>読めない字幕や足りない素材は、書き出す前に止めます</p>
-      </div>
-      <div class="card">
-        <h4>出す</h4>
-        <p>MP4・WebM・GIF・MP3。画質と大きさを選べます</p>
+        <h4>書き出す</h4>
+        <p>縦、横、正方形を選べます。保存前と書き出し前に、欠けた素材、はみ出した尺、□になる字、読みにくい字幕を止めます。</p>
       </div>
     </div>
     <p class="note" style="margin-top:16px">
@@ -256,7 +250,7 @@
 
   <section id="install">
     <div class="num">05 / 導入</div>
-    <h2>AIに頼むのが、いちばん簡単</h2>
+    <h2>使い始めるまで</h2>
     <p>
       下の依頼文をコピーして、普段使っているAIエージェント（Claude Code / Codex / Cursor など）に送ってください。
       <strong>できるところはAIが進め、あなたの操作が必要なところだけ案内します。</strong>
