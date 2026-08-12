@@ -21,10 +21,11 @@ LOGO = os.path.join(ROOT, "ui", "assets", "logo_editor.png")
 OUT = os.path.join(ROOT, "docs", "assets", "hero.jpg")
 OUT_EN = os.path.join(ROOT, "docs", "assets", "hero-en.jpg")
 
-# ページの h1 と揃える（別々に持つとズレるので、変えるときは両方直す）
-COPY = "日本語で動画を作り、字幕1つから手で直せる。"
+# 画像用は h1 を短くしたもの。**h1 と同じ文にしない**
+# （ページ上で同じ文が2回続けて出て重複に見える。画像は単体でも意味が通る長さに留める）
+COPY = "日本語で作り、手で直せる。"
 # 英語版ページ用。日本語の画像を英語ページに出さない
-COPY_EN = "Make a video in plain language. Move one subtitle by hand."
+COPY_EN = "Make it in plain language. Fix it by hand."
 
 FONTS = [
     "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc",
@@ -69,7 +70,7 @@ def main(copy_text, out=OUT, en=False):
 
     # キャッチ。1行で置き、背景が明るくても読めるよう薄い影を敷く
     ty = y + lg.height + int(H * 0.045)
-    f = font(int(H * (0.040 if en else 0.049)))
+    f = font(int(H * (0.046 if en else 0.056)))
     d = ImageDraw.Draw(im)
     for dx, dy in ((0, 2), (2, 0), (0, -2), (-2, 0), (2, 2)):
         d.text((x + dx, ty + dy), copy_text, font=f, fill=(0, 0, 0))
