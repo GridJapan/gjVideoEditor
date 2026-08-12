@@ -7,7 +7,7 @@
 <meta name="description" content="日本語で頼めばAIが動画を1本組み上げます。気になるところだけタイムラインUIで直せば、言い直すより早い。Python標準ライブラリ＋Pillow＋ffmpegだけで動く、依存ゼロ・MITライセンス。">
 <meta property="og:title" content="GJ VIDEO EDITOR">
 <meta property="og:description" content="AIで作り、必要なところだけ直せる。依存ゼロ・MITライセンス。">
-<meta property="og:image" content="../assets/editor.png">
+<meta property="og:image" content="../assets/hero.jpg">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="alternate" hreflang="ja" href="https://gridjapan.github.io/gjVideoEditor/jp/">
@@ -49,6 +49,8 @@
   .sub{font-size:14px;color:var(--muted);margin-bottom:30px}
   .shot{width:100%;border-radius:12px;border:1px solid var(--line);
     box-shadow:0 18px 48px rgba(15,23,42,.10);display:block}
+  /* メインビジュアルは写真なので枠線を外し、影を強めて浮かせる */
+  .hero-img{border:0;box-shadow:0 26px 70px rgba(15,23,42,.22)}
   .cap{font-size:12px;color:var(--muted);text-align:center;margin-top:10px}
 
   /* セクション */
@@ -61,9 +63,13 @@
   .note{font-size:13px;color:var(--muted)}
 
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:24px}
+  .cols4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
   .card{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
   .card h3{margin-top:0}
+  .card h4{margin:0 0 6px;font-size:15px;color:var(--ink)}
   .card p{font-size:14px;margin-bottom:0}
+  .cols4 .card{padding:16px 18px}
+  .cols4 .card p{font-size:13px;line-height:1.75}
 
   pre{background:#0f172a;color:#e2e8f0;padding:16px 18px;border-radius:9px;overflow-x:auto;
     font:13px/1.75 var(--mono);margin:16px 0}
@@ -103,6 +109,7 @@
     .hero{padding:48px 0 4px}
     .hero h1{font-size:28px}
     .cols{grid-template-columns:1fr;gap:16px}
+    .cols4{grid-template-columns:1fr 1fr;gap:12px}
     .hbar nav a:not(.ghbtn):not(.lang-a){display:none}
   }
 </style>
@@ -114,7 +121,7 @@
     <span class="logo"><img src="../assets/mark.png" alt="" width="22" height="22">GJ VIDEO EDITOR</span>
     <nav>
       <a href="#how">仕組み</a>
-      <a href="#features">できること</a>
+      <a href="#features">作れるもの</a>
       <a href="#viewer">ビューア</a>
       <a href="#install">導入</a>
       <span class="lang"><span class="on">日本語</span> / <a href="../en/" class="lang-a">EN</a></span>
@@ -134,22 +141,23 @@
       <strong>言い直すより早く、タイムラインで直せます。</strong>
     </p>
     <p class="sub">Python標準ライブラリ ＋ Pillow ＋ ffmpeg だけ。クラウドもAPIキーも不要です。</p>
-    <img class="shot" src="../assets/editor.png" alt="video-editor の編集画面。上にプレビュー、下にマルチトラックのタイムライン">
-    <p class="cap">編集画面。clone した直後にこのサンプルが動きます</p>
+    <img class="shot hero-img" src="../assets/hero.jpg" alt="">
   </div>
 
   <section id="how">
     <div class="num">01 / 仕組み</div>
-    <h2>AIとUIが、同じ1つのファイルを書き換える</h2>
+    <h2>手で直したところは、AIに頼み直しても消えません</h2>
     <p>
       AIに動画を作らせると、たいてい出てくるのはコード（React や HTML）です。
-      中身を1か所直したいだけでも、コードを読むかAIに頼み直すことになります。
+      1か所だけ直したくても、コードを読むか、AIに頼み直すことになります。
     </p>
     <p>
-      このツールでは、AIも人も <code>project.json</code> という1枚のファイルだけを書き換えます。
-      だから<strong>AIが作ったものをそのままタイムラインで編集でき、そのあとまた言葉で指示しても、
-      手で直した内容は残ります。</strong>
+      このツールは、AIも人も <code>project.json</code> という1枚のファイルだけを書き換えます。
+      作ったものをそのままタイムラインで触れて、続きをまた言葉で頼めます。
     </p>
+    <img class="shot" src="../assets/editor.png" style="margin-top:22px"
+         alt="編集画面。上にプレビュー、下に映像・字幕・画像・音声のタイムライン">
+    <p class="cap">編集画面。clone した直後に、このサンプルが動きます</p>
 
     <div class="cols">
       <div class="card">
@@ -168,49 +176,50 @@
   </section>
 
   <section id="features">
-    <div class="num">02 / できること</div>
-    <h2>ふつうの編集はひととおり</h2>
-
-    <table>
-      <tr><th>タイムライン編集</th><td>映像・字幕・画像・音声のマルチトラック。ドラッグ&ドロップ、分割、undo/redo、吸着、ズーム</td></tr>
-      <tr><th>非破壊編集</th><td>長い元動画を1本置いたまま、参照位置だけをずらして使います。切り出しファイルを作らないので、<strong>端をいつでも伸ばせます</strong></td></tr>
-      <tr><th>字幕</th><td>枠のドラッグ・リサイズ・フォント・360°回転・<strong>縦書き</strong>・部分強調・画面端への吸着</td></tr>
-      <tr><th>字幕アニメーション</th><td><strong>数字のカウントアップ</strong>・1文字ずつの文字送り・画面外からのスライドイン・スタンプ登場。数値の差を見せる<strong>比較バー</strong>も付けられます</td></tr>
-      <tr><th>画像の動き</th><td>フェードイン／アウト・不透明度・ゆっくり寄る／引く（ケンバーンズ）・上下左右へのパン</td></tr>
-      <tr><th>映像の調整</th><td>再生速度（0.25〜4倍。声の高さは保ったまま）・左右反転・トリミング・角丸</td></tr>
-      <tr><th>色調整</th><td>明るさ・コントラスト・彩度。<strong>プレビューと書き出しが同じ計算式</strong>なので、見たまま出ます</td></tr>
-      <tr><th>トランジション</th><td>フェードイン／アウト／クロスフェードをワンクリックで。重ね方はツールが自動で組みます</td></tr>
-      <tr><th>ワイプ（PiP）</th><td>プレビュー上でドラッグして移動・拡大縮小。角丸を1.0にすると正円になります</td></tr>
-      <tr><th>音声</th><td>音量・フェード・<strong>BGMの自動ダッキング</strong>（ナレーション中だけ沈む）・短いBGMのループ・ラウドネス正規化</td></tr>
-      <tr><th>ナレーション</th><td>無料でAPIキー不要の音声合成に対応。複数の声を使い分けられます</td></tr>
-      <tr><th>マスク</th><td>モザイク・ぼかし・黒塗り。会議録画に映り込んだものを隠せます</td></tr>
-      <tr><th>多言語</th><td>文字種に合わせてフォントを自動で切り替え。<strong>フォントが描けない文字は書き出す前に検出</strong>します</td></tr>
-      <tr><th>字幕ファイル</th><td>SRTの書き出しと取り込み。他ツールで作った字幕もそのまま持ち込めます</td></tr>
-      <tr><th>書き出し</th><td>MP4 / WebM / GIF / MP3。画質・解像度に加えて<strong>秒数で範囲を指定</strong>できます（直した数秒だけの確認に）</td></tr>
-      <tr><th>量産</th><td>台本を1枚書いて1コマンドで動画が1本。Pythonは書きません</td></tr>
-    </table>
-
-    <h3 style="margin-top:34px">壊れたものを「成功」と言わない</h3>
+    <div class="num">02 / 見てもらうのが早い</div>
+    <h2>この動画も、日本語で頼んで作りました</h2>
     <p>
-      書き出しは、失敗しても最後まで走ってしまうことがあります。このツールは<strong>保存と書き出しの前に検査します。</strong>
+      台本もナレーションも字幕も、最初はAIが組みます。
+      そのあと気になったところだけ、タイムラインで直しました。
     </p>
-    <table>
-      <tr><th>重なり・尺</th><td>同じトラックでクリップが重なっていないか。素材の長さを超えて伸ばしていないか</td></tr>
-      <tr><th>文字化け</th><td>選んだフォントで<strong>描けない文字（□になる字）を事前に検出</strong>します</td></tr>
-      <tr><th>読めるか</th><td>字幕と下敷きのコントラスト比、実際の描画幅での枠からの溢れ</td></tr>
-      <tr><th>素材の実在</th><td>足りないファイルを名前で挙げて止まります。英語のエラーは出しません</td></tr>
-    </table>
-    <p class="note">
-      検査そのものにも総当りのテストが付いています（レンダラ40項目・編集ツール32項目・サーバ31項目）。
-      判定は「例外が出なかったか」ではなく、<strong>書き出した動画の画素と音量を実測して</strong>行います。
-    </p>
-
-    <h3 style="margin-top:34px">このツールで作った動画</h3>
-    <p class="note">下の28秒の動画も、このツールで組み立てて書き出したものです。</p>
     <video controls preload="none" poster="../assets/sample-poster.jpg">
       <source src="../assets/sample.mp4" type="video/mp4">
     </video>
-    <p class="cap">図解はAIで生成、ナレーションは無料の音声合成。組み立て・BGM・効果音・書き出しはこのツール</p>
+    <p class="cap">絵はAIで生成、ナレーションは無料の音声合成。組み立てから書き出しまでこのツール</p>
+
+    <h3 style="margin-top:40px">作れるもの</h3>
+    <p>
+      縦でも横でも正方形でも書き出せます。作ったあとにサイズを変えても、文字と位置は付いてきます。
+    </p>
+    <table>
+      <tr><th>SNSの投稿動画</th><td>縦型。ナレーションつきの紙芝居に、数字が動く字幕や比較の棒を足せます</td></tr>
+      <tr><th>サービスの紹介</th><td>横型。画面録画に字幕を重ね、見せたくないところはぼかせます</td></tr>
+      <tr><th>会議録画の切り抜き</th><td>長い録画を1本置いたまま、要るところだけ並べます。あとで端を伸ばせます</td></tr>
+      <tr><th>多言語版</th><td>同じ構成のまま、字幕とナレーションだけ差し替えます</td></tr>
+    </table>
+
+    <h3 style="margin-top:40px">やることは4つだけ</h3>
+    <div class="cols4">
+      <div class="card">
+        <h4>作る</h4>
+        <p>日本語で頼むと、台本・音声・字幕まで組み上がります</p>
+      </div>
+      <div class="card">
+        <h4>直す</h4>
+        <p>映像・字幕・画像・音を、タイムラインで動かします</p>
+      </div>
+      <div class="card">
+        <h4>確かめる</h4>
+        <p>読めない字幕や足りない素材は、書き出す前に止めます</p>
+      </div>
+      <div class="card">
+        <h4>出す</h4>
+        <p>MP4・WebM・GIF・MP3。画質と大きさを選べます</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:16px">
+      細かい機能の一覧は <a href="https://github.com/GridJapan/gjVideoEditor">GitHub</a> にあります。
+    </p>
   </section>
 
   <section id="viewer">
@@ -221,28 +230,23 @@
       書き出した動画が新しい順に並ぶので、<strong>ファイルを探しに行かずに再生して確認できます。</strong>
     </p>
     <img class="shot" src="../assets/viewer.png" alt="GJ VIDEO VIEWER。左に書き出した動画の一覧、右に再生画面">
-    <p class="cap">左が書き出し済みの一覧、右がプレイヤー。ループ再生にも対応しています</p>
-    <table>
-      <tr><th>一覧</th><td>プロジェクトを横断して、書き出した動画を新しい順に表示します。任意のフォルダも開けます</td></tr>
-      <tr><th>再生</th><td>サムネイルは自動で作られ、2回目以降は即座に開きます。🔁 でループ再生もできます</td></tr>
-      <tr><th>戻る</th><td>エディタに重ねて開くだけなので、閉じれば<strong>再生位置も選択もそのまま</strong>です</td></tr>
-    </table>
+    <p class="cap">左が書き出し済みの一覧、右がプレイヤー</p>
+    <p>
+      サムネイルは自動で作られます。ループ再生もできるので、繋ぎ目の確認に使えます。
+      エディタの上に重ねて開くだけなので、閉じれば再生位置も選択もそのままです。
+    </p>
   </section>
 
   <section id="claude">
     <div class="num">04 / おすすめの使い方</div>
-    <h2>左に相棒、右に道具</h2>
+    <h2>チャットと編集画面を、横に並べて使う</h2>
     <p>
       Claude デスクトップアプリから Claude Code を起動し、
       <strong>左でチャット・右のプレビューペインでこのエディタを開く</strong>構成が一番はかどります。
+      「BGMもう少し小さく」「ロゴを右上に」と左で頼み、右でそのまま結果を触れます。
     </p>
     <img class="shot" src="../assets/split-view.png" alt="左にClaude Codeのチャット、右にvideo-editorの編集画面を並べた画面イメージ">
-    <p class="cap">1つの画面の中で「頼む → 触る → 見る」が完結します</p>
-
-    <table>
-      <tr><th>左</th><td>「BGMもう少し小さく」「ロゴを右上に」と日本語で指示すると、差分が当たります</td></tr>
-      <tr><th>右</th><td>そのまま編集UIとして操作できます。書き出した動画の確認もここでできます</td></tr>
-    </table>
+    <p class="cap">頼む・触る・見るが、1つの画面で続きます</p>
     <p class="note">
       リポジトリには作法を書いた <code>CLAUDE.md</code> が入っているので、
       Claude Code はこのツールの流儀を最初から知った状態で作業します。

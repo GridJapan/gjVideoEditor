@@ -7,7 +7,7 @@
 <meta name="description" content="Describe the video you want and an AI assembles it end to end. Keep it as is, or fix the parts that bother you on a timeline — faster than explaining them again. Python standard library + Pillow + ffmpeg. MIT licensed.">
 <meta property="og:title" content="GJ VIDEO EDITOR">
 <meta property="og:description" content="Built by AI, fixable where it matters. No dependencies to speak of. MIT licensed.">
-<meta property="og:image" content="../assets/editor.png">
+<meta property="og:image" content="../assets/hero.jpg">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="alternate" hreflang="ja" href="https://gridjapan.github.io/gjVideoEditor/jp/">
@@ -49,6 +49,7 @@
   .sub{font-size:14px;color:var(--muted);margin-bottom:30px}
   .shot{width:100%;border-radius:12px;border:1px solid var(--line);
     box-shadow:0 18px 48px rgba(15,23,42,.10);display:block}
+  .hero-img{border:0;box-shadow:0 26px 70px rgba(15,23,42,.22)}
   .cap{font-size:12px;color:var(--muted);text-align:center;margin-top:10px}
 
   /* sections */
@@ -61,9 +62,13 @@
   .note{font-size:13px;color:var(--muted)}
 
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:24px}
+  .cols4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
   .card{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
   .card h3{margin-top:0}
+  .card h4{margin:0 0 6px;font-size:15px;color:var(--ink)}
   .card p{font-size:14px;margin-bottom:0}
+  .cols4 .card{padding:16px 18px}
+  .cols4 .card p{font-size:13px;line-height:1.75}
 
   pre{background:#0f172a;color:#e2e8f0;padding:16px 18px;border-radius:9px;overflow-x:auto;
     font:13px/1.75 var(--mono);margin:16px 0}
@@ -103,6 +108,7 @@
     .hero{padding:48px 0 4px}
     .hero h1{font-size:28px}
     .cols{grid-template-columns:1fr;gap:16px}
+    .cols4{grid-template-columns:1fr 1fr;gap:12px}
     .hbar nav a:not(.ghbtn):not(.lang-a){display:none}
   }
 </style>
@@ -114,7 +120,7 @@
     <span class="logo"><img src="../assets/mark.png" alt="" width="22" height="22">GJ VIDEO EDITOR</span>
     <nav>
       <a href="#how">How</a>
-      <a href="#features">Features</a>
+      <a href="#features">What you can make</a>
       <a href="#viewer">Viewer</a>
       <a href="#install">Install</a>
       <span class="lang"><a href="../jp/" class="lang-a">日本語</a> / <span class="on">EN</span></span>
@@ -134,22 +140,23 @@
       <strong>fix it on the timeline instead of explaining it again.</strong>
     </p>
     <p class="sub">Python standard library + Pillow + ffmpeg. No cloud, no API keys.</p>
-    <img class="shot" src="../assets/editor.png" alt="The video-editor workspace: preview on top, multi-track timeline below">
-    <p class="cap">The workspace. This sample runs right after you clone.</p>
+    <img class="shot hero-img" src="../assets/hero.jpg" alt="">
   </div>
 
   <section id="how">
     <div class="num">01 / How it works</div>
-    <h2>The AI and the UI write to one file</h2>
+    <h2>What you fixed by hand survives the next prompt</h2>
     <p>
       Have an AI make you a video and what usually comes out is code — React, HTML.
       To change one thing you either read the code or go back to prompting.
     </p>
     <p>
       Here, both the AI and you edit a single <code>project.json</code>.
-      <strong>You can edit what the AI produced right on the timeline, and prompting again
-      won't wipe out what you did by hand.</strong>
+      Touch what the AI produced right on the timeline, then carry on in plain language.
     </p>
+    <img class="shot" src="../assets/editor.png" style="margin-top:22px"
+         alt="The workspace: preview on top, multi-track timeline below">
+    <p class="cap">The workspace. This sample runs right after you clone.</p>
 
     <div class="cols">
       <div class="card">
@@ -168,50 +175,51 @@
   </section>
 
   <section id="features">
-    <div class="num">02 / Features</div>
-    <h2>Everything you'd expect from an editor</h2>
-
-    <table>
-      <tr><th>Timeline</th><td>Multi-track video, subtitles, images and audio. Drag &amp; drop, split, undo/redo, snapping, zoom</td></tr>
-      <tr><th>Non-destructive</th><td>Keep one long source and just move the in-point. Nothing is cut out, so <strong>you can always extend a clip's edges</strong></td></tr>
-      <tr><th>Subtitles</th><td>Drag, resize, fonts, 360° rotation, <strong>vertical writing</strong>, inline emphasis, edge snapping</td></tr>
-      <tr><th>Subtitle animation</th><td><strong>Counting numbers up</strong>, typewriter reveal, slide-in from off-screen, stamp-style pop. Add a <strong>comparison bar</strong> to make a gap between two numbers obvious</td></tr>
-      <tr><th>Image motion</th><td>Fade in/out, opacity, slow push in or pull out (Ken Burns), and panning in any direction</td></tr>
-      <tr><th>Video adjustments</th><td>Playback speed (0.25×–4×, pitch preserved), horizontal flip, cropping, rounded corners</td></tr>
-      <tr><th>Colour</th><td>Brightness, contrast and saturation. <strong>The preview and the export use the same formula</strong>, so what you see is what you get</td></tr>
-      <tr><th>Transitions</th><td>Fade in, fade out and cross-fade in one click. The tool works out the layering for you</td></tr>
-      <tr><th>Picture-in-picture</th><td>Drag and scale right on the preview. Set the corner radius to 1.0 for a perfect circle</td></tr>
-      <tr><th>Audio</th><td>Gain, fades, <strong>automatic music ducking</strong> under narration, looping for short tracks, loudness normalisation</td></tr>
-      <tr><th>Narration</th><td>Free text-to-speech, no API key. Mix multiple voices</td></tr>
-      <tr><th>Masking</th><td>Mosaic, blur or solid fill — for whatever wandered into a screen recording</td></tr>
-      <tr><th>Multilingual</th><td>Fonts switch automatically by script. <strong>Characters the font cannot draw are caught before export</strong></td></tr>
-      <tr><th>Subtitle files</th><td>Import and export SRT, so subtitles made elsewhere come straight in</td></tr>
-      <tr><th>Export</th><td>MP4 / WebM / GIF / MP3, with quality and resolution options, plus <strong>an arbitrary time range</strong> when you only want to check the seconds you just changed</td></tr>
-      <tr><th>Batch</th><td>One script file, one command, one video. You don't write Python</td></tr>
-    </table>
-
-    <h3 style="margin-top:34px">A broken export is never called a success</h3>
+    <div class="num">02 / See it first</div>
+    <h2>This video was made from a request written in Japanese</h2>
     <p>
-      Exports have a habit of running to completion even when something went wrong.
-      This one <strong>checks before it saves and before it renders.</strong>
+      The script, the narration and the subtitles were assembled by the AI first.
+      Then a few things got nudged on the timeline.
     </p>
-    <table>
-      <tr><th>Overlaps &amp; length</th><td>No two clips overlapping on one track; nothing stretched past the end of its source</td></tr>
-      <tr><th>Missing glyphs</th><td><strong>Characters your chosen font cannot draw</strong> — the ones that come out as boxes — are found in advance</td></tr>
-      <tr><th>Legibility</th><td>Contrast ratio between subtitle and backing plate, and overflow measured at the real rendered width</td></tr>
-      <tr><th>Missing assets</th><td>Stops and names the files. You never get a raw ffmpeg error</td></tr>
-    </table>
-    <p class="note">
-      The checks have their own test suite (40 renderer cases, 32 for the editing tool, 31 for the server).
-      Passing means <strong>the pixels and the audio levels of the exported file were measured</strong> — not merely that nothing threw.
-    </p>
-
-    <h3 style="margin-top:34px">Made with this tool</h3>
-    <p class="note">The 28-second video below was assembled and exported with this tool.</p>
     <video controls preload="none" poster="../assets/sample-poster.jpg">
       <source src="../assets/sample.mp4" type="video/mp4">
     </video>
-    <p class="cap">Illustrations by AI, narration by free TTS. Assembly, music, sound effects and export all done here</p>
+    <p class="cap">Images generated by AI, narration by free TTS. Everything from assembly to export happened here</p>
+
+    <h3 style="margin-top:40px">What you can make</h3>
+    <p>
+      Vertical, horizontal or square. Change the size afterwards and the text and
+      positions come along with it.
+    </p>
+    <table>
+      <tr><th>Social posts</th><td>Vertical. Narrated stills, with subtitles whose numbers count up and bars that compare them</td></tr>
+      <tr><th>Product walkthroughs</th><td>Horizontal. Subtitles over a screen recording, with anything private blurred out</td></tr>
+      <tr><th>Clips from a recording</th><td>Keep the long file in place and pull out the parts you need. The edges stay extendable</td></tr>
+      <tr><th>Other languages</th><td>Same structure, different subtitles and narration</td></tr>
+    </table>
+
+    <h3 style="margin-top:40px">Four things to do</h3>
+    <div class="cols4">
+      <div class="card">
+        <h4>Make</h4>
+        <p>Ask in plain language; script, voice and subtitles come back assembled</p>
+      </div>
+      <div class="card">
+        <h4>Adjust</h4>
+        <p>Move video, subtitles, images and audio around on the timeline</p>
+      </div>
+      <div class="card">
+        <h4>Check</h4>
+        <p>Unreadable subtitles and missing assets stop the export</p>
+      </div>
+      <div class="card">
+        <h4>Export</h4>
+        <p>MP4, WebM, GIF, MP3, at the quality and size you pick</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:16px">
+      The full feature list lives on <a href="https://github.com/GridJapan/gjVideoEditor">GitHub</a>.
+    </p>
   </section>
 
   <section id="viewer">
@@ -223,11 +231,10 @@
     </p>
     <img class="shot" src="../assets/viewer.png" alt="GJ VIDEO VIEWER: exported videos on the left, player on the right">
     <p class="cap">Exports on the left, player on the right. Loop playback included</p>
-    <table>
-      <tr><th>List</th><td>Shows exports across all projects, newest first. You can also point it at any folder</td></tr>
-      <tr><th>Playback</th><td>Thumbnails are generated automatically and cached, so it opens instantly after the first time. 🔁 loops</td></tr>
-      <tr><th>Going back</th><td>It opens as an overlay, so closing it leaves <strong>your playhead and selection untouched</strong></td></tr>
-    </table>
+    <p>
+      Thumbnails are generated for you, and looping playback makes it easy to check how a cut joins.
+      It opens on top of the editor, so closing it leaves your playhead and selection untouched.
+    </p>
   </section>
 
   <section id="claude">
