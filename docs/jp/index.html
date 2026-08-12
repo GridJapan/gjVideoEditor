@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GJ VIDEO EDITOR — 言葉でつくって、気になったところだけ直す</title>
+<title>GJ VIDEO EDITOR — 日本語で動画を作り、字幕1つから手で直せる</title>
 <meta name="description" content="日本語で「こういう動画を作って」と伝えると、台本、ナレーション、字幕、書き出しまで進みます。直したくなったら、タイムラインでその部分だけ触れます。ローカルで完結、MITライセンス。">
 <meta property="og:title" content="GJ VIDEO EDITOR">
-<meta property="og:description" content="言葉でつくって、気になったところだけ直す。ローカルで完結・MITライセンス。">
+<meta property="og:description" content="日本語で動画を作り、字幕1つから手で直せる。ローカルで完結・MITライセンス。">
 <meta property="og:image" content="../assets/hero.jpg">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
@@ -134,10 +134,10 @@
 
   <div class="hero">
     <p class="badge">開発中 · v0.16.0</p>
-    <h1>言葉でつくって、<em>気になったところだけ直す。</em></h1>
+    <h1>日本語で動画を作り、<em>字幕1つから手で直せる。</em></h1>
     <p class="lede">
-      日本語で「こういう動画を作って」と伝えると、台本、ナレーション、字幕、書き出しまで進みます。
-      直したくなったら、タイムラインでその部分だけ触ってください。
+      「こういう動画を作って」と日本語で伝えると、台本もナレーションも字幕も、AIが組み上げます。
+      直したいところが出てきたら、字幕を掴んで動かしても、言葉で頼み直しても構いません。
     </p>
     <p class="sub">Python標準ライブラリ ＋ Pillow ＋ ffmpeg だけ。クラウドもAPIキーも不要です。</p>
     <img class="shot hero-img" src="../assets/hero.jpg" alt="">
@@ -145,14 +145,14 @@
 
   <section id="how">
     <div class="num">01 / 仕組み</div>
-    <h2>直したあとに、もう一度伝えても大丈夫</h2>
+    <h2>直し方が2つある</h2>
     <p>
       AIに動画を作らせると、たいてい出てくるのはコード（React や HTML）です。
-      1か所だけ直したくても、コードを読むか、AIに頼み直すことになります。
+      直す手段はAIに頼み直すことだけで、うまく伝わらないと何度も往復します。
     </p>
     <p>
-      このツールは、AIも人も <code>project.json</code> という1枚のファイルだけを書き換えます。
-      作ったものをそのままタイムラインで触れて、続きをまた言葉で頼めます。
+      このツールは、AIも人も <code>project.json</code> という1枚のファイルを書き換えます。
+      <strong>手直しは、手動でもAIに依頼してもOK。</strong>そのときやりやすいほうを選べます。
     </p>
     <img class="shot" src="../assets/editor.png" style="margin-top:22px"
          alt="編集画面。上にプレビュー、下に映像・字幕・画像・音声のタイムライン">
@@ -160,25 +160,26 @@
 
     <div class="cols">
       <div class="card">
-        <h3>日本語で伝えると、そこまで進む</h3>
-        <p>「こういう動画を作って」と日本語で伝えると、台本、ナレーション、字幕、書き出しまで進みます。</p>
+        <h3>AIに頼む</h3>
+        <p>「BGMをもう少し小さく」「ロゴを右上に」と伝えれば、そのとおりに直ります。何十か所でも一度に。</p>
       </div>
       <div class="card">
-        <h3>気になったところは、タイムラインで直す</h3>
-        <p>AIが組んだものは、そのままタイムラインに載っています。ずらしたい字幕や動かしたい映像は、そこだけ触ってください。あとから言葉で伝えても、先に直した内容は残ります。</p>
+        <h3>自分で触る</h3>
+        <p>字幕を0.5秒ずらす、少し右へ寄せる。言葉で説明するより掴んで動かすほうが早いときは、タイムラインで直接。</p>
       </div>
     </div>
 
     <p class="note" style="margin-top:18px">
-      直した内容はAIが読み返せます。同じ直しが繰り返されているなら、それはAIの既定値が間違っているということです。
+      どちらで直しても、次にAIへ頼むときの土台になります。
     </p>
   </section>
 
   <section id="features">
     <div class="num">02 / 実際の例</div>
-    <h2>日本語で伝えてできたもの</h2>
+    <h2>この動画も、AIのみで作成しました</h2>
     <p>
-      台本、ナレーション、字幕はAIが組みました。そのあと、気になったところだけタイムラインで触っています。
+      台本もナレーションも字幕も、AIが組んだものをそのまま書き出しています。
+      手直しは、手動でもAIに依頼してもOKです。
     </p>
     <video controls preload="none" poster="../assets/sample-poster.jpg">
       <source src="../assets/sample.mp4" type="video/mp4">
@@ -200,11 +201,11 @@
     <div class="cols3">
       <div class="card">
         <h4>言葉でつくる</h4>
-        <p>日本語で伝えると、台本、ナレーション、字幕、書き出しまで進みます。</p>
+        <p>「こういう動画を作って」と伝えると、台本・ナレーション音声・字幕まで組み上がります。</p>
       </div>
       <div class="card">
         <h4>気になったところを直す</h4>
-        <p>できたものを、そのままタイムラインで触れます。</p>
+        <p>字幕を0.5秒ずらす、少し右へ寄せる。掴んで動かすほうが早いときは、この画面で。</p>
       </div>
       <div class="card">
         <h4>書き出す</h4>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GJ VIDEO EDITOR — Built by AI, fixable where it matters</title>
+<title>GJ VIDEO EDITOR — Make a video in plain language, then fix it by hand</title>
 <meta name="description" content="Describe the video you want and an AI assembles it end to end. Keep it as is, or fix the parts that bother you on a timeline — faster than explaining them again. Python standard library + Pillow + ffmpeg. MIT licensed.">
 <meta property="og:title" content="GJ VIDEO EDITOR">
 <meta property="og:description" content="Built by AI, fixable where it matters. No dependencies to speak of. MIT licensed.">
@@ -133,11 +133,10 @@
 
   <div class="hero">
     <p class="badge">Work in progress · v0.16.0</p>
-    <h1>Built by AI, <em>fixable where it matters.</em></h1>
+    <h1>Make a video in plain language, <em>then move a single subtitle by hand.</em></h1>
     <p class="lede">
-      Describe the video you want and the AI handles the script, the voice, the subtitles
-      and the export. Ship it as is — or, when something bothers you,
-      <strong>fix it on the timeline instead of explaining it again.</strong>
+      Describe the video you want and the AI assembles the script, the narration and the subtitles.
+      When something needs changing, drag the subtitle yourself or just ask again — whichever is quicker.
     </p>
     <p class="sub">Python standard library + Pillow + ffmpeg. No cloud, no API keys.</p>
     <img class="shot hero-img" src="../assets/hero.jpg" alt="">
@@ -145,14 +144,14 @@
 
   <section id="how">
     <div class="num">01 / How it works</div>
-    <h2>What you fixed by hand survives the next prompt</h2>
+    <h2>Two ways to change something</h2>
     <p>
       Have an AI make you a video and what usually comes out is code — React, HTML.
       To change one thing you either read the code or go back to prompting.
     </p>
     <p>
       Here, both the AI and you edit a single <code>project.json</code>.
-      Touch what the AI produced right on the timeline, then carry on in plain language.
+      <strong>Fix things by hand, or ask the AI to.</strong> Whichever suits the moment.
     </p>
     <img class="shot" src="../assets/editor.png" style="margin-top:22px"
          alt="The workspace: preview on top, multi-track timeline below">
@@ -160,12 +159,12 @@
 
     <div class="cols">
       <div class="card">
-        <h3>Ask once, get a video</h3>
-        <p>The AI's changes land as diffs. Overlapping clips, missing assets and out-of-range durations are <strong>rejected before saving</strong>, so you never end up with a broken project.</p>
+        <h3>Ask the AI</h3>
+        <p>"Turn the music down a bit", "move the logo to the top right" — dozens of changes at once, if you like.</p>
       </div>
       <div class="card">
-        <h3>Reach in whenever you want</h3>
-        <p>"Move that subtitle half a second later and a bit to the right" is sometimes just faster to drag than to describe. The UI shows exactly the same data.</p>
+        <h3>Do it yourself</h3>
+        <p>Half a second later, slightly to the right. Some things are faster to drag than to describe.</p>
       </div>
     </div>
 
@@ -176,10 +175,10 @@
 
   <section id="features">
     <div class="num">02 / See it first</div>
-    <h2>This video was made from a request written in Japanese</h2>
+    <h2>This video was made by AI alone</h2>
     <p>
-      The script, the narration and the subtitles were assembled by the AI first.
-      Then a few things got nudged on the timeline.
+      Script, narration and subtitles were all assembled by the AI and exported as they came.
+      Changes can be made by hand or by asking — either works.
     </p>
     <video controls preload="none" poster="../assets/sample-poster.jpg">
       <source src="../assets/sample.mp4" type="video/mp4">
